@@ -1,3 +1,5 @@
+# start.py
+
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardRemove
@@ -61,6 +63,7 @@ async def callback_link(callback: types.CallbackQuery):
 async def callback_support(callback: types.CallbackQuery):
     """Обработчик кнопки 'Связаться с оператором'"""
     await callback.answer()
+    await callback.message.delete()
     await callback.message.answer(
         "Опишите проблему одним сообщением.\n"
         "Поддерживаются только текстовые сообщения.\n\n"
