@@ -1,12 +1,22 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardRemove
 
 from database import add_user
-from keyboards import main_menu, get_inline_links, cancel_button
+from keyboards import main_menu, cancel_button
 from utils import get_link
 
 router = Router()
+
+# Словарь с названиями ссылок
+LINK_NAMES = {
+    "chat": "💬 Чат",
+    "news": "📢 Новости",
+    "reserve": "🛟 Резерв",
+    "bot": "🤖 Бот",
+    "website": "🌐 Сайт",
+    "ceo": "👨‍💼 CEO",
+    "operator": "🎧 Оператор"
+}
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -27,21 +37,37 @@ async def cmd_start(message: types.Message):
         reply_markup=main_menu()
     )
 
-@router.message(F.text == "✉️ Связаться с оператором")
-async def btn_support(message: types.Message):
-    """Переход в режим обращения к оператору"""
-    await message.answer(
+@router.callback_query(F.data.startswith("link_"))
+async def callback_link(callback: types.CallbackQuery):
+    """Обработчик кнопок со ссылками"""
+    await callback.answer()
+    
+    # Получаем ключ ссылки (chat, news, etc.)
+    link_key = callback.data.replace("link_", "")
+    
+    # Получаем название кнопки
+    link_name = LINK_NAMES.get(link_key, link_key)
+    
+    # Получаем ссылку
+    url = get_link(link_key)
+    
+    if url:
+        await callback.message.answer(
+            f"{link_name}\n\n"
+            f"🔗 {url}"
+        )
+    else:
+        await callback.message.answer(
+            f"❌ Ссылка не настроена"
+        )
+
+@router.callback_query(F.data == "support")
+async def callback_support(callback: types.CallbackQuery):
+    """Обработчик кнопки 'Связаться с оператором'"""
+    await callback.answer()
+    await callback.message.answer(
         "Опишите проблему одним сообщением.\n"
         "Поддерживаются только текстовые сообщения.\n\n"
         "Ответ придет прямо в этот чат.",
         reply_markup=cancel_button()
-    )
-
-# Обработка всех кнопок со ссылками через инлайн
-@router.message(F.text.in_(["💬 Чат", "📢 Новости", "🛟 Резерв", "🤖 Бот", "🌐 Сайт", "👨‍💼 CEO", "🎧 Оператор"]))
-async def handle_link_buttons(message: types.Message):
-    """Обработка кнопок с ссылками через инлайн клавиатуру"""
-    await message.answer(
-        "Выберите ссылку:",
-        reply_markup=get_inline_links()
     )
