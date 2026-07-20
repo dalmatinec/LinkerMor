@@ -5,8 +5,9 @@ from aiogram.filters import Command
 from aiogram.types import FSInputFile
 import json
 import os
+import time
 
-from database import add_user
+from database import add_user, get_user_link, save_user_link, delete_user_link
 from keyboards import main_menu, cancel_inline
 from utils import get_link, get_chat_id
 
@@ -34,11 +35,11 @@ def load_welcome_text():
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
-    
+
     # Игнорируем команду в группах
     if message.chat.type in ["group", "supergroup"]:
         return
-    
+
     user = message.from_user
 
     # Регистрация пользователя
@@ -69,7 +70,7 @@ async def cmd_start(message: types.Message):
 async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
     await callback.answer()
-    
+
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
         await callback.answer("❌ Используйте бота в личных сообщениях")
@@ -85,6 +86,26 @@ async def callback_link(callback: types.CallbackQuery):
             await callback.message.answer(f"❌ {link_name} не настроен")
             return
 
+        user_id = callback.from_user.id
+        
+        # Проверяем наличие активной ссылки в БД для этого типа
+        created_at = get_user_link(user_id, link_key)
+
+        if created_at:
+            elapsed = time.time() - created_at
+            if elapsed < 1800:  # 30 минут
+                remaining = int(1800 - elapsed)
+                minutes = remaining // 60
+                seconds = remaining % 60
+                await callback.answer(
+                    f"⏳ Новая ссылка будет доступна через {minutes} мин {seconds} сек",
+                    show_alert=True
+                )
+                return
+            else:
+                # Время истекло, удаляем старую запись
+                delete_user_link(user_id, link_key)
+
         try:
             # Генерируем инвайт-ссылку на 30 минут для 1 пользователя
             from datetime import datetime, timedelta
@@ -95,6 +116,9 @@ async def callback_link(callback: types.CallbackQuery):
                 member_limit=1,
                 expire_date=expire_date
             )
+
+            # Сохраняем ссылку в БД
+            save_user_link(user_id, link_key, int(time.time()))
 
             # Отправляем ссылку в ЛС пользователя
             await callback.bot.send_message(
@@ -133,12 +157,12 @@ async def callback_link(callback: types.CallbackQuery):
 async def callback_support(callback: types.CallbackQuery):
     """Обработчик кнопки 'Связаться с оператором'"""
     await callback.answer()
-    
+
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
         await callback.answer("❌ Используйте бота в личных сообщениях")
         return
-    
+
     await callback.message.delete()
     await callback.message.answer(
         "Опишите проблему одним сообщением.\n"
@@ -151,12 +175,12 @@ async def callback_support(callback: types.CallbackQuery):
 async def callback_cancel(callback: types.CallbackQuery):
     """Отмена обращения"""
     await callback.answer()
-    
+
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
         await callback.answer("❌ Используйте бота в личных сообщениях")
         return
-    
+
     await callback.message.delete()
     await callback.message.answer(
         "❌ Обращение отменено"
