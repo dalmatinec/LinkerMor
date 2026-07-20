@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardRemove
 
 from database import add_user
-from keyboards import main_menu, cancel_button
+from keyboards import main_menu, get_inline_links, cancel_button
 from utils import get_link
 
 router = Router()
@@ -27,62 +27,6 @@ async def cmd_start(message: types.Message):
         reply_markup=main_menu()
     )
 
-@router.message(F.text == "💬 Чат")
-async def btn_chat(message: types.Message):
-    link = get_link("chat")
-    if link:
-        await message.answer(f"🔗 Ссылка на чат:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "📢 Новости")
-async def btn_news(message: types.Message):
-    link = get_link("news")
-    if link:
-        await message.answer(f"🔗 Ссылка на новости:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "🛟 Резерв")
-async def btn_reserve(message: types.Message):
-    link = get_link("reserve")
-    if link:
-        await message.answer(f"🔗 Ссылка на резерв:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "🤖 Бот")
-async def btn_bot(message: types.Message):
-    link = get_link("bot")
-    if link:
-        await message.answer(f"🔗 Ссылка на бота:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "🌐 Сайт")
-async def btn_website(message: types.Message):
-    link = get_link("website")
-    if link:
-        await message.answer(f"🔗 Ссылка на сайт:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "👨‍💼 CEO")
-async def btn_ceo(message: types.Message):
-    link = get_link("ceo")
-    if link:
-        await message.answer(f"🔗 Контакт CEO:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
-@router.message(F.text == "🎧 Оператор")
-async def btn_operator(message: types.Message):
-    link = get_link("operator")
-    if link:
-        await message.answer(f"🔗 Контакт оператора:\n{link}")
-    else:
-        await message.answer("❌ Ссылка не настроена")
-
 @router.message(F.text == "✉️ Связаться с оператором")
 async def btn_support(message: types.Message):
     """Переход в режим обращения к оператору"""
@@ -91,4 +35,13 @@ async def btn_support(message: types.Message):
         "Поддерживаются только текстовые сообщения.\n\n"
         "Ответ придет прямо в этот чат.",
         reply_markup=cancel_button()
+    )
+
+# Обработка всех кнопок со ссылками через инлайн
+@router.message(F.text.in_(["💬 Чат", "📢 Новости", "🛟 Резерв", "🤖 Бот", "🌐 Сайт", "👨‍💼 CEO", "🎧 Оператор"]))
+async def handle_link_buttons(message: types.Message):
+    """Обработка кнопок с ссылками через инлайн клавиатуру"""
+    await message.answer(
+        "Выберите ссылку:",
+        reply_markup=get_inline_links()
     )
