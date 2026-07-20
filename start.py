@@ -69,11 +69,11 @@ async def cmd_start(message: types.Message):
 @router.callback_query(F.data.startswith("link_"))
 async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
-    await callback.answer()
+    # НЕ вызываем await callback.answer() в начале!
 
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌ Используйте бота в личных сообщениях")
+        await callback.answer("❌ Используйте бота в личных сообщениях", show_alert=True)
         return
 
     link_key = callback.data.replace("link_", "")
@@ -83,11 +83,11 @@ async def callback_link(callback: types.CallbackQuery):
     if link_key in ["chat", "news", "reserve"]:
         chat_id = get_chat_id(link_key)
         if not chat_id:
-            await callback.message.answer(f"❌ {link_name} не настроен")
+            await callback.answer("❌ Ссылка не настроена", show_alert=True)
             return
 
         user_id = callback.from_user.id
-        
+
         # Проверяем наличие активной ссылки в БД для этого типа
         created_at = get_user_link(user_id, link_key)
 
@@ -107,7 +107,6 @@ async def callback_link(callback: types.CallbackQuery):
                 delete_user_link(user_id, link_key)
 
         try:
-            # Генерируем инвайт-ссылку на 30 минут для 1 пользователя
             from datetime import datetime, timedelta
             expire_date = datetime.now() + timedelta(minutes=30)
 
@@ -117,10 +116,8 @@ async def callback_link(callback: types.CallbackQuery):
                 expire_date=expire_date
             )
 
-            # Сохраняем ссылку в БД
             save_user_link(user_id, link_key, int(time.time()))
 
-            # Отправляем ссылку в ЛС пользователя
             await callback.bot.send_message(
                 chat_id=callback.from_user.id,
                 text=(
@@ -133,11 +130,9 @@ async def callback_link(callback: types.CallbackQuery):
                 ),
                 parse_mode="HTML"
             )
+            await callback.answer()  # закрываем callback после успеха
         except Exception as e:
-            await callback.bot.send_message(
-                chat_id=callback.from_user.id,
-                text=f"❌ Ошибка при генерации ссылки: {e}"
-            )
+            await callback.answer(f"❌ Ошибка при генерации ссылки: {e}", show_alert=True)
 
     # Для бота, CEO, оператора - фиксированные ссылки
     else:
@@ -147,11 +142,9 @@ async def callback_link(callback: types.CallbackQuery):
                 chat_id=callback.from_user.id,
                 text=f"{link_name}\n\n🔗 {url}"
             )
+            await callback.answer()
         else:
-            await callback.bot.send_message(
-                chat_id=callback.from_user.id,
-                text="❌ Ссылка не настроена"
-            )
+            await callback.answer("❌ Ссылка не настроена", show_alert=True)
 
 @router.callback_query(F.data == "support")
 async def callback_support(callback: types.CallbackQuery):
@@ -160,7 +153,7 @@ async def callback_support(callback: types.CallbackQuery):
 
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌ Используйте бота в личных сообщениях")
+        await callback.answer("❌ Используйте бота в личных сообщениях", show_alert=True)
         return
 
     await callback.message.delete()
@@ -178,7 +171,7 @@ async def callback_cancel(callback: types.CallbackQuery):
 
     # Игнорируем нажатия в группах
     if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌ Используйте бота в личных сообщениях")
+        await callback.answer("❌ Используйте бота в личных сообщениях", show_alert=True)
         return
 
     await callback.message.delete()
