@@ -44,19 +44,19 @@ def save_operators(operators: list):
 
 def format_user_message(user_id: int, username: str, first_name: str, text: str) -> str:
     """Форматирует сообщение для отправки операторам/админам"""
-    now = datetime.now().strftime("%d.%m.%Y %H:%M")
+    now = datetime.now().strftime("%d.%m %H:%M")
     
-    name_line = f"{first_name or 'Не указан'}"
-    if username:
-        name_line += f" (@{username})"
+    name = first_name or "Не указан"
+    username_line = f"Юзер: @{username}" if username else "Юзер: нет"
     
     return (
         f"<b>📨 Новое обращение</b>\n\n"
-        f"👤 Пользователь\n{name_line}\n\n"
-        f"🆔 ID\n{user_id}\n\n"
-        f"📅 Дата\n{now}\n\n"
-        f"━━━━━━━━━━━━━━\n\n"
+        f"💬 <b>Сообщение:</b>\n"
         f"{text}\n\n"
-        f"━━━━━━━━━━━━━━\n\n"
-        f"Ответьте реплаем."
+        f"───────────────\n"
+        f"👤 Имя: {name}\n"
+        f"🕊 {username_line}\n"
+        f"🆔 ID: {user_id}\n"
+        f"🕒 {now}\n\n"
+        f"↩ Ответьте реплаем."
     )
