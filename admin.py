@@ -6,7 +6,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from config import ADMIN_IDS
 from database import get_user_count, get_active_user_count, get_blocked_user_count
-from utils import load_links, save_links, get_operators, save_operators, get_link
+from utils import load_links, save_links, get_operators, save_operators, get_link, set_chat_id
 from keyboards import admin_panel, main_menu, cancel_inline
 from states import EditLinkStates, EditOperatorsStates
 
@@ -28,16 +28,69 @@ async def back_to_menu(message: types.Message):
         reply_markup=main_menu()
     )
 
-@router.message(Command("admin"))
+@router.message(Command("admin"), F.chat.type == "private")
 async def cmd_admin(message: types.Message):
-    """Команда /admin - открыть админ-панель"""
+    """Команда /admin - открыть админ-панель (только в ЛС)"""
     if not is_admin(message.from_user.id):
         return
-    
+
     await message.answer(
         "👋 Добро пожаловать в админ-панель!\n\n"
         "Выберите действие:",
         reply_markup=admin_panel()
+    )
+
+@router.message(Command("set_chat"))
+async def cmd_set_chat(message: types.Message):
+    """Привязать текущий чат как 'чат' (работает в группах)"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    if message.chat.type in ["group", "supergroup"]:
+        set_chat_id("chat", message.chat.id)
+        await message.answer("✅ Чат добавлен")
+    else:
+        await message.answer("❌ Эта команда работает только в группах")
+
+@router.message(Command("set_news"))
+async def cmd_set_news(message: types.Message):
+    """Привязать текущий канал как 'новости' (работает в каналах)"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    if message.chat.type in ["channel"]:
+        set_chat_id("news", message.chat.id)
+        await message.answer("✅ Канал добавлен")
+    else:
+        await message.answer("❌ Эта команда работает только в каналах")
+
+@router.message(Command("set_res"))
+async def cmd_set_res(message: types.Message):
+    """Привязать текущий чат как 'резерв' (работает в группах)"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    if message.chat.type in ["group", "supergroup"]:
+        set_chat_id("reserve", message.chat.id)
+        await message.answer("✅ Резерв добавлен")
+    else:
+        await message.answer("❌ Эта команда работает только в группах")
+
+@router.message(Command("help"), F.chat.type == "private")
+async def cmd_help(message: types.Message):
+    """Команда /help - помощь для админов (только в ЛС)"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    await message.answer(
+        "🤖 Команды администратора:\n\n"
+        "/stats - Статистика пользователей\n"
+        "/send - Рассылка (ответьте на сообщение)\n"
+        "/forward - Пересылка (ответьте на сообщение)\n"
+        "/set_chat - Привязать текущий чат как 'Чат'\n"
+        "/set_news - Привязать текущий канал как 'Новости'\n"
+        "/set_res - Привязать текущий чат как 'Резерв'\n"
+        "/help - Эта справка"
     )
 
 @router.message(F.text == "📊 Статистика")
@@ -45,11 +98,11 @@ async def admin_stats(message: types.Message):
     """Статистика в админ-панели"""
     if not is_admin(message.from_user.id):
         return
-    
+
     total = get_user_count()
     active = get_active_user_count()
     blocked = get_blocked_user_count()
-    
+
     await message.answer(
         f"📊 Статистика\n\n"
         f"👥 Всего пользователей: {total}\n"
@@ -62,21 +115,21 @@ async def admin_edit_links(message: types.Message, state: FSMContext):
     """Начало изменения ссылок"""
     if not is_admin(message.from_user.id):
         return
-    
+
     data = load_links()
     links = data.get("links", {})
-    
+
     # Формируем список ссылок
     link_list = "\n".join([f"• {key}: {value or 'не указана'}" for key, value in links.items()])
-    
+
     # Создаем клавиатуру со ссылками
     buttons = []
     for key in links.keys():
         buttons.append([KeyboardButton(text=key)])
     buttons.append([KeyboardButton(text="◀️ Отмена")])
-    
+
     keyboard = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-    
+
     await state.set_state(EditLinkStates.choosing_link)
     await message.answer(
         f"🔗 Выберите ссылку для изменения:\n\n{link_list}",
@@ -88,7 +141,7 @@ async def process_link_choice(message: types.Message, state: FSMContext):
     """Обработка выбора ссылки"""
     if not is_admin(message.from_user.id):
         return
-    
+
     if message.text == "◀️ Отмена":
         await state.clear()
         await message.answer(
@@ -96,14 +149,14 @@ async def process_link_choice(message: types.Message, state: FSMContext):
             reply_markup=admin_panel()
         )
         return
-    
+
     data = load_links()
     links = data.get("links", {})
-    
+
     if message.text not in links:
         await message.answer("❌ Неверный выбор. Попробуте снова.")
         return
-    
+
     await state.update_data(selected_link=message.text)
     await state.set_state(EditLinkStates.entering_value)
     await message.answer(
@@ -117,7 +170,7 @@ async def process_link_value(message: types.Message, state: FSMContext):
     """Обработка ввода нового значения ссылки"""
     if not is_admin(message.from_user.id):
         return
-    
+
     if message.text == "❌ Отмена":
         await state.clear()
         await message.answer(
@@ -125,20 +178,20 @@ async def process_link_value(message: types.Message, state: FSMContext):
             reply_markup=admin_panel()
         )
         return
-    
+
     data = load_links()
     selected = await state.get_data()
     link_key = selected.get("selected_link")
-    
+
     if not link_key:
         await state.clear()
         await message.answer("❌ Ошибка. Попробуйте снова.", reply_markup=admin_panel())
         return
-    
+
     # Сохраняем новое значение
     data["links"][link_key] = message.text
     save_links(data)
-    
+
     await state.clear()
     await message.answer(
         f"✅ Ссылка обновлена!\n\n"
@@ -151,10 +204,10 @@ async def admin_edit_operators(message: types.Message, state: FSMContext):
     """Начало изменения операторов"""
     if not is_admin(message.from_user.id):
         return
-    
+
     operators = get_operators()
     operator_list = "\n".join([f"• {op}" for op in operators]) if operators else "Список пуст"
-    
+
     await state.set_state(EditOperatorsStates.entering_operator)
     await message.answer(
         f"👨‍💻 Управление операторами\n\n"
@@ -169,7 +222,7 @@ async def process_operator_input(message: types.Message, state: FSMContext):
     """Обработка ввода ID оператора"""
     if not is_admin(message.from_user.id):
         return
-    
+
     if message.text == "❌ Отмена":
         await state.clear()
         await message.answer(
@@ -177,29 +230,29 @@ async def process_operator_input(message: types.Message, state: FSMContext):
             reply_markup=admin_panel()
         )
         return
-    
+
     try:
         operator_id = int(message.text.strip())
     except ValueError:
         await message.answer("❌ Введите корректный числовой ID")
         return
-    
+
     operators = get_operators()
-    
+
     if operator_id == 0:
         # Режим удаления
         if not operators:
             await message.answer("❌ Список операторов пуст")
             return
-        
+
         # Создаем клавиатуру для выбора оператора на удаление
         buttons = []
         for op in operators:
             buttons.append([KeyboardButton(text=str(op))])
         buttons.append([KeyboardButton(text="◀️ Отмена")])
-        
+
         keyboard = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-        
+
         await state.update_data(mode="delete")
         await state.set_state(EditOperatorsStates.entering_operator)
         await message.answer(
@@ -208,15 +261,15 @@ async def process_operator_input(message: types.Message, state: FSMContext):
             reply_markup=keyboard
         )
         return
-    
+
     # Режим добавления
     if operator_id in operators:
         await message.answer(f"❌ Оператор с ID {operator_id} уже существует")
         return
-    
+
     operators.append(operator_id)
     save_operators(operators)
-    
+
     await state.clear()
     await message.answer(
         f"✅ Оператор добавлен!\n\n"
@@ -230,7 +283,7 @@ async def process_operator_delete(message: types.Message, state: FSMContext):
     """Обработка удаления оператора"""
     if not is_admin(message.from_user.id):
         return
-    
+
     if message.text == "◀️ Отмена":
         await state.clear()
         await message.answer(
@@ -238,26 +291,26 @@ async def process_operator_delete(message: types.Message, state: FSMContext):
             reply_markup=admin_panel()
         )
         return
-    
+
     data = await state.get_data()
     mode = data.get("mode")
-    
+
     if mode == "delete":
         try:
             operator_id = int(message.text.strip())
         except ValueError:
             await message.answer("❌ Введите корректный ID")
             return
-        
+
         operators = get_operators()
-        
+
         if operator_id not in operators:
             await message.answer(f"❌ Оператор с ID {operator_id} не найден")
             return
-        
+
         operators.remove(operator_id)
         save_operators(operators)
-        
+
         await state.clear()
         await message.answer(
             f"✅ Оператор удален!\n\n"
