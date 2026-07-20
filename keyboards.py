@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from utils import get_link
 
 def main_menu():
-    """Главное меню со ссылками"""
+    """Главное меню с инлайн кнопками вместо текстовых ссылок"""
     buttons = [
         [KeyboardButton(text="💬 Чат"), KeyboardButton(text="📢 Новости")],
         [KeyboardButton(text="🛟 Резерв"), KeyboardButton(text="🤖 Бот")],
@@ -11,6 +11,25 @@ def main_menu():
         [KeyboardButton(text="✉️ Связаться с оператором")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def get_inline_links():
+    """Инлайн клавиатура со ссылками"""
+    links = {
+        "💬 Чат": get_link("chat"),
+        "📢 Новости": get_link("news"),
+        "🛟 Резерв": get_link("reserve"),
+        "🤖 Бот": get_link("bot"),
+        "🌐 Сайт": get_link("website"),
+        "👨‍💼 CEO": get_link("ceo"),
+        "🎧 Оператор": get_link("operator")
+    }
+    
+    buttons = []
+    for name, url in links.items():
+        if url:
+            buttons.append([InlineKeyboardButton(text=name, url=url)])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def cancel_button():
     """Кнопка отмены"""
@@ -26,8 +45,3 @@ def admin_panel():
         [KeyboardButton(text="◀️ Назад в меню")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-
-def admin_stats():
-    """Статистика в админке"""
-    # Используется в admin.py для вывода статистики
-    pass
