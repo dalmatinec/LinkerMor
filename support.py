@@ -18,6 +18,11 @@ support_messages = {}
 @router.message(F.text, ~F.reply_to_message)
 async def handle_support_message(message: types.Message):
     """Обработка текстовых сообщений в режиме поддержки"""
+    
+    # Игнорируем сообщения из групп, супергрупп и каналов
+    if message.chat.type in ["group", "supergroup", "channel"]:
+        return
+    
     user = message.from_user
 
     # Проверяем, что это не команда
