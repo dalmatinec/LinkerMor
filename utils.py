@@ -43,17 +43,20 @@ def save_operators(operators: list):
     save_links(data)
 
 def format_user_message(user_id: int, username: str, first_name: str, text: str) -> str:
-    """Форматирует сообщение для отправки операторам/админам (коротко и красиво)"""
-    now = datetime.now().strftime("%d.%m %H:%M")
-    name = first_name or username or str(user_id)
+    """Форматирует сообщение для отправки операторам/админам"""
+    now = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    name_line = f"{first_name or 'Не указан'}"
+    if username:
+        name_line += f" (@{username})"
+    
     return (
-        f"📩 <b>Новое обращение</b>\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"👤 {name}\n"
-        f"🆔 <code>{user_id}</code>\n"
-        f"🕐 {now}\n"
+        f"<b>📨 Новое обращение</b>\n\n"
+        f"👤 Пользователь\n{name_line}\n\n"
+        f"🆔 ID\n{user_id}\n\n"
+        f"📅 Дата\n{now}\n\n"
         f"━━━━━━━━━━━━━━\n\n"
         f"{text}\n\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"<i>Ответьте реплаем</i>"
+        f"━━━━━━━━━━━━━━\n\n"
+        f"Ответьте реплаем."
     )
