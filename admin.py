@@ -40,56 +40,74 @@ async def cmd_admin(message: types.Message):
         reply_markup=admin_panel()
     )
 
-@router.message(Command("set_chat"))
+@router.message(Command("set_chat"), F.chat.type == "private")
 async def cmd_set_chat(message: types.Message):
-    """Привязать текущий чат как 'чат' (работает в группах)"""
+    """Привязать чат по ID (только в ЛС)"""
     if not is_admin(message.from_user.id):
         return
     
-    if message.chat.type in ["group", "supergroup"]:
-        set_chat_id("chat", message.chat.id)
-        await message.answer("✅ Чат добавлен")
-    else:
-        await message.answer("❌ Эта команда работает только в группах")
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("❌ Используйте: /set_chat ID_чата")
+        return
+    
+    try:
+        chat_id = int(args[1])
+        set_chat_id("chat", chat_id)
+        await message.answer(f"✅ Чат добавлен (ID: {chat_id})")
+    except ValueError:
+        await message.answer("❌ ID должен быть числом")
 
-@router.message(Command("set_news"))
+@router.message(Command("set_news"), F.chat.type == "private")
 async def cmd_set_news(message: types.Message):
-    """Привязать текущий канал как 'новости' (работает в каналах)"""
+    """Привязать канал по ID (только в ЛС)"""
     if not is_admin(message.from_user.id):
         return
     
-    if message.chat.type in ["channel"]:
-        set_chat_id("news", message.chat.id)
-        await message.answer("✅ Канал добавлен")
-    else:
-        await message.answer("❌ Эта команда работает только в каналах")
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("❌ Используйте: /set_news ID_канала")
+        return
+    
+    try:
+        chat_id = int(args[1])
+        set_chat_id("news", chat_id)
+        await message.answer(f"✅ Канал добавлен (ID: {chat_id})")
+    except ValueError:
+        await message.answer("❌ ID должен быть числом")
 
-@router.message(Command("set_res"))
+@router.message(Command("set_res"), F.chat.type == "private")
 async def cmd_set_res(message: types.Message):
-    """Привязать текущий чат как 'резерв' (работает в группах)"""
+    """Привязать резервный чат по ID (только в ЛС)"""
     if not is_admin(message.from_user.id):
         return
     
-    if message.chat.type in ["group", "supergroup"]:
-        set_chat_id("reserve", message.chat.id)
-        await message.answer("✅ Резерв добавлен")
-    else:
-        await message.answer("❌ Эта команда работает только в группах")
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("❌ Используйте: /set_res ID_чата")
+        return
+    
+    try:
+        chat_id = int(args[1])
+        set_chat_id("reserve", chat_id)
+        await message.answer(f"✅ Резерв добавлен (ID: {chat_id})")
+    except ValueError:
+        await message.answer("❌ ID должен быть числом")
 
 @router.message(Command("help"), F.chat.type == "private")
 async def cmd_help(message: types.Message):
     """Команда /help - помощь для админов (только в ЛС)"""
     if not is_admin(message.from_user.id):
         return
-    
+
     await message.answer(
         "🤖 Команды администратора:\n\n"
         "/stats - Статистика пользователей\n"
         "/send - Рассылка (ответьте на сообщение)\n"
         "/forward - Пересылка (ответьте на сообщение)\n"
-        "/set_chat - Привязать текущий чат как 'Чат'\n"
-        "/set_news - Привязать текущий канал как 'Новости'\n"
-        "/set_res - Привязать текущий чат как 'Резерв'\n"
+        "/set_chat ID - Привязать чат\n"
+        "/set_news ID - Привязать канал\n"
+        "/set_res ID - Привязать резервный чат\n"
         "/help - Эта справка"
     )
 
