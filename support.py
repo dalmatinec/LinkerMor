@@ -79,10 +79,14 @@ async def handle_support_message(message: types.Message):
 @router.message(F.reply_to_message)
 async def handle_operator_reply(message: types.Message):
     """Обработка ответа оператора реплаем"""
+    logger.info(f"Reply handler started. From user: {message.from_user.id}")
+
     user = message.from_user
 
     # Проверяем, является ли отправитель оператором
     operators = get_operators()
+    logger.info(f"Operators: {operators}")
+    logger.info(f"Is operator: {message.from_user.id in operators}")
 
     # Если это не оператор - игнорируем
     if user.id not in operators:
@@ -90,30 +94,25 @@ async def handle_operator_reply(message: types.Message):
 
     # Получаем оригинальное сообщение (реплай)
     replied_msg = message.reply_to_message
+    logger.info(f"reply_to_message exists: {replied_msg is not None}")
+    if replied_msg:
+        logger.info(f"reply message_id: {replied_msg.message_id}")
+        logger.info(f"reply from: {replied_msg.from_user.id}")
 
     # Проверяем, что это сообщение от бота
     bot_id = (await message.bot.get_me()).id
     if not replied_msg or replied_msg.from_user.id != bot_id:
         return
 
+    logger.info(f"support_messages: {support_messages}")
+    logger.info(f"Looking for message_id: {replied_msg.message_id}")
+
     # Получаем ID пользователя из словаря по message_id
     user_id = support_messages.get(replied_msg.message_id)
+    logger.info(f"Found user_id: {user_id}")
 
     if not user_id:
         await message.answer("❌ Не удалось определить пользователя")
-        return
-
-    # Логи для отладки
-    logger.info(f"user_id={user_id}")
-    logger.info(f"type={type(user_id)}")
-
-    # Проверяем chat
-    try:
-        chat = await message.bot.get_chat(user_id)
-        logger.info(chat)
-    except Exception as e:
-        logger.error(f"get_chat error: {e}")
-        await message.answer(f"❌ Ошибка: {e}")
         return
 
     # Получаем имя оператора
@@ -129,6 +128,7 @@ async def handle_operator_reply(message: types.Message):
             f"━━━━━━━━━━━━━━"
         )
         try:
+            logger.info(f"Sending reply to user {user_id}")
             await message.bot.send_message(
                 chat_id=user_id,
                 text=answer_text
@@ -136,7 +136,7 @@ async def handle_operator_reply(message: types.Message):
             await message.answer("✅ Ответ отправлен пользователю")
             del support_messages[replied_msg.message_id]
         except Exception as e:
-            logger.error(f"Failed to send reply to {user_id}: {e}")
+            logger.exception(e)
             await message.answer(f"❌ Ошибка при отправке: {e}")
 
     # Если ответ - фото
@@ -153,6 +153,7 @@ async def handle_operator_reply(message: types.Message):
                 f"👨‍💻 Ответил: {operator_name}\n\n"
                 f"━━━━━━━━━━━━━━"
             )
+            logger.info(f"Sending photo reply to user {user_id}")
             await message.bot.send_photo(
                 chat_id=user_id,
                 photo=message.photo[-1].file_id,
@@ -161,7 +162,7 @@ async def handle_operator_reply(message: types.Message):
             await message.answer("✅ Ответ отправлен пользователю")
             del support_messages[replied_msg.message_id]
         except Exception as e:
-            logger.error(f"Failed to send photo reply to {user_id}: {e}")
+            logger.exception(e)
             await message.answer(f"❌ Ошибка при отправке: {e}")
 
     # Если ответ - видео
@@ -178,6 +179,7 @@ async def handle_operator_reply(message: types.Message):
                 f"👨‍💻 Ответил: {operator_name}\n\n"
                 f"━━━━━━━━━━━━━━"
             )
+            logger.info(f"Sending video reply to user {user_id}")
             await message.bot.send_video(
                 chat_id=user_id,
                 video=message.video.file_id,
@@ -186,7 +188,7 @@ async def handle_operator_reply(message: types.Message):
             await message.answer("✅ Ответ отправлен пользователю")
             del support_messages[replied_msg.message_id]
         except Exception as e:
-            logger.error(f"Failed to send video reply to {user_id}: {e}")
+            logger.exception(e)
             await message.answer(f"❌ Ошибка при отправке: {e}")
 
     # Если ответ - документ
@@ -203,6 +205,7 @@ async def handle_operator_reply(message: types.Message):
                 f"👨‍💻 Ответил: {operator_name}\n\n"
                 f"━━━━━━━━━━━━━━"
             )
+            logger.info(f"Sending document reply to user {user_id}")
             await message.bot.send_document(
                 chat_id=user_id,
                 document=message.document.file_id,
@@ -211,7 +214,7 @@ async def handle_operator_reply(message: types.Message):
             await message.answer("✅ Ответ отправлен пользователю")
             del support_messages[replied_msg.message_id]
         except Exception as e:
-            logger.error(f"Failed to send document reply to {user_id}: {e}")
+            logger.exception(e)
             await message.answer(f"❌ Ошибка при отправке: {e}")
 
     # Если ответ - другие типы
