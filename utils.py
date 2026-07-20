@@ -35,6 +35,8 @@ def get_link(key: str) -> str:
 
 def get_operators() -> list:
     data = load_links()
+    print("LINK.JSON =", os.path.abspath(LINKS_FILE))
+    print("OPERATORS =", data.get("operators", []))
     return data.get("operators", [])
 
 def save_operators(operators: list):
@@ -45,10 +47,10 @@ def save_operators(operators: list):
 def format_user_message(user_id: int, username: str, first_name: str, text: str) -> str:
     """Форматирует сообщение для отправки операторам/админам"""
     now = datetime.now().strftime("%d.%m %H:%M")
-    
+
     name = first_name or "Не указан"
     username_line = f"Юзер: @{username}" if username else "Юзер: нет"
-    
+
     return (
         f"<b>📨 Новое обращение</b>\n\n"
         f"💬 <b>Сообщение:</b>\n"
