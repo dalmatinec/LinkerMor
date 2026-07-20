@@ -2,7 +2,7 @@ import logging
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import ADMIN_IDS
 from database import get_user_count, get_active_user_count, get_blocked_user_count
@@ -24,11 +24,11 @@ async def admin_stats_callback(callback: CallbackQuery):
     await callback.answer()
     if not is_admin(callback.from_user.id):
         return
-    
+
     total = get_user_count()
     active = get_active_user_count()
     blocked = get_blocked_user_count()
-    
+
     await callback.message.answer(
         f"📊 Статистика\n\n"
         f"👥 Всего пользователей: {total}\n"
@@ -63,7 +63,7 @@ async def admin_back_to_menu_callback(callback: CallbackQuery):
         reply_markup=main_menu()
     )
 
-# ============ ФУНКЦИИ ДЛЯ РАБОТЫ С ССЫЛКАМИ И ОПЕРАТОРАМИ ============
+# ============ ФУНКЦИИ ДЛЯ РАБОТЫ С ССЫЛКАМИ ============
 async def admin_edit_links(message: types.Message, state: FSMContext):
     """Начало изменения ссылок"""
     data = load_links()
@@ -71,12 +71,13 @@ async def admin_edit_links(message: types.Message, state: FSMContext):
 
     link_list = "\n".join([f"• {key}: {value or 'не указана'}" for key, value in links.items()])
 
+    # Инлайн-кнопки для выбора ссылки
     buttons = []
     for key in links.keys():
-        buttons.append([KeyboardButton(text=key)])
-    buttons.append([KeyboardButton(text="◀️ Отмена")])
+        buttons.append([InlineKeyboardButton(text=key, callback_data=f"edit_link_{key}")])
+    buttons.append([InlineKeyboardButton(text="◀️ Отмена", callback_data="cancel_edit_links")])
 
-    keyboard = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     await state.set_state(EditLinkStates.choosing_link)
     await message.answer(
@@ -84,33 +85,38 @@ async def admin_edit_links(message: types.Message, state: FSMContext):
         reply_markup=keyboard
     )
 
-@router.message(EditLinkStates.choosing_link)
-async def process_link_choice(message: types.Message, state: FSMContext):
-    """Обработка выбора ссылки"""
-    if not is_admin(message.from_user.id):
+@router.callback_query(F.data.startswith("edit_link_"))
+async def process_link_choice(callback: CallbackQuery, state: FSMContext):
+    """Обработка выбора ссылки (инлайн)"""
+    await callback.answer()
+    if not is_admin(callback.from_user.id):
         return
 
-    if message.text == "◀️ Отмена":
-        await state.clear()
-        await message.answer(
-            "❌ Отменено",
-            reply_markup=admin_panel()
-        )
-        return
+    link_key = callback.data.replace("edit_link_", "")
 
     data = load_links()
     links = data.get("links", {})
 
-    if message.text not in links:
-        await message.answer("❌ Неверный выбор. Попробуте снова.")
+    if link_key not in links:
+        await callback.message.answer("❌ Неверный выбор. Попробуйте снова.")
         return
 
-    await state.update_data(selected_link=message.text)
+    await state.update_data(selected_link=link_key)
     await state.set_state(EditLinkStates.entering_value)
-    await message.answer(
-        f"Введите новое значение для ссылки: {message.text}\n"
-        f"Текущее: {links[message.text] or 'не указана'}",
+    await callback.message.answer(
+        f"Введите новое значение для ссылки: {link_key}\n"
+        f"Текущее: {links[link_key] or 'не указана'}",
         reply_markup=cancel_inline()
+    )
+
+@router.callback_query(F.data == "cancel_edit_links")
+async def cancel_edit_links(callback: CallbackQuery, state: FSMContext):
+    """Отмена изменения ссылок"""
+    await callback.answer()
+    await state.clear()
+    await callback.message.answer(
+        "❌ Отменено",
+        reply_markup=admin_panel()
     )
 
 @router.message(EditLinkStates.entering_value)
@@ -146,6 +152,7 @@ async def process_link_value(message: types.Message, state: FSMContext):
         reply_markup=admin_panel()
     )
 
+# ============ ФУНКЦИИ ДЛЯ РАБОТЫ С ОПЕРАТОРАМИ ============
 async def admin_edit_operators(message: types.Message, state: FSMContext):
     """Начало изменения операторов"""
     operators = get_operators()
@@ -187,12 +194,13 @@ async def process_operator_input(message: types.Message, state: FSMContext):
             await message.answer("❌ Список операторов пуст")
             return
 
+        # Инлайн-кнопки для выбора оператора на удаление
         buttons = []
         for op in operators:
-            buttons.append([KeyboardButton(text=str(op))])
-        buttons.append([KeyboardButton(text="◀️ Отмена")])
+            buttons.append([InlineKeyboardButton(text=str(op), callback_data=f"delete_operator_{op}")])
+        buttons.append([InlineKeyboardButton(text="◀️ Отмена", callback_data="cancel_delete_operator")])
 
-        keyboard = ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
         await state.update_data(mode="delete")
         await state.set_state(EditOperatorsStates.entering_operator)
@@ -217,45 +225,40 @@ async def process_operator_input(message: types.Message, state: FSMContext):
         reply_markup=admin_panel()
     )
 
-@router.message(EditOperatorsStates.entering_operator)
-async def process_operator_delete(message: types.Message, state: FSMContext):
-    """Обработка удаления оператора"""
-    if not is_admin(message.from_user.id):
+@router.callback_query(F.data.startswith("delete_operator_"))
+async def process_operator_delete_callback(callback: CallbackQuery, state: FSMContext):
+    """Удаление оператора (инлайн)"""
+    await callback.answer()
+    if not is_admin(callback.from_user.id):
         return
 
-    if message.text == "◀️ Отмена":
-        await state.clear()
-        await message.answer(
-            "❌ Отменено",
-            reply_markup=admin_panel()
-        )
+    operator_id = int(callback.data.replace("delete_operator_", ""))
+
+    operators = get_operators()
+
+    if operator_id not in operators:
+        await callback.message.answer(f"❌ Оператор с ID {operator_id} не найден")
         return
 
-    data = await state.get_data()
-    mode = data.get("mode")
+    operators.remove(operator_id)
+    save_operators(operators)
 
-    if mode == "delete":
-        try:
-            operator_id = int(message.text.strip())
-        except ValueError:
-            await message.answer("❌ Введите корректный ID")
-            return
+    await state.clear()
+    await callback.message.answer(
+        f"✅ Оператор удален!\n\n"
+        f"Текущие операторы:\n{chr(10).join([f'• {op}' for op in operators]) if operators else 'Список пуст'}",
+        reply_markup=admin_panel()
+    )
 
-        operators = get_operators()
-
-        if operator_id not in operators:
-            await message.answer(f"❌ Оператор с ID {operator_id} не найден")
-            return
-
-        operators.remove(operator_id)
-        save_operators(operators)
-
-        await state.clear()
-        await message.answer(
-            f"✅ Оператор удален!\n\n"
-            f"Текущие операторы:\n{chr(10).join([f'• {op}' for op in operators]) if operators else 'Список пуст'}",
-            reply_markup=admin_panel()
-        )
+@router.callback_query(F.data == "cancel_delete_operator")
+async def cancel_delete_operator(callback: CallbackQuery, state: FSMContext):
+    """Отмена удаления оператора"""
+    await callback.answer()
+    await state.clear()
+    await callback.message.answer(
+        "❌ Отменено",
+        reply_markup=admin_panel()
+    )
 
 # ============ КОМАНДЫ ============
 @router.message(Command("admin"), F.chat.type == "private")
