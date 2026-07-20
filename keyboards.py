@@ -5,16 +5,16 @@ def main_menu():
     """Главное меню - инлайн кнопки"""
     buttons = [
         [
-            InlineKeyboardButton(text="💬 Чат", callback_data="link_chat"),
-            InlineKeyboardButton(text="📢 Новости", callback_data="link_news")
+            InlineKeyboardButton(text="🌺ᴄʜᴀᴛ", callback_data="link_chat"),
+            InlineKeyboardButton(text="🌺ɴᴇᴡs", callback_data="link_news")
         ],
         [
-            InlineKeyboardButton(text="🛟 Резерв", callback_data="link_reserve"),
-            InlineKeyboardButton(text="🤖 Бот", url=get_link("bot"))
+            InlineKeyboardButton(text="🌺ʀᴇsᴇʀᴠ", callback_data="link_reserve"),
+            InlineKeyboardButton(text="🌺ʙᴏᴛ", url=get_link("bot"))
         ],
         [
-            InlineKeyboardButton(text="👨‍💼 CEO", url=get_link("ceo")),
-            InlineKeyboardButton(text="🎧 Оператор", url=get_link("operator"))
+            InlineKeyboardButton(text="🌺ᴍᴏʀᴇɴᴀ", url=get_link("ceo")),
+            InlineKeyboardButton(text="🌺ᴏᴘᴇʀᴀᴛᴏʀ", url=get_link("operator"))
         ],
         [
             InlineKeyboardButton(text="✉️ Связаться с оператором", callback_data="support")
