@@ -35,17 +35,17 @@ def load_welcome_text():
 async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
     user = message.from_user
-    
+
     # Регистрация пользователя
     add_user(
         telegram_id=user.id,
         username=user.username,
         first_name=user.first_name
     )
-    
+
     # Загружаем текст приветствия и подставляем имя
     welcome_text = load_welcome_text().format(first_name=user.first_name)
-    
+
     # Отправляем фото с подписью
     if os.path.exists("start.jpg"):
         photo = FSInputFile("start.jpg")
@@ -64,40 +64,41 @@ async def cmd_start(message: types.Message):
 async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
     await callback.answer()
-    
+
     link_key = callback.data.replace("link_", "")
     link_name = LINK_NAMES.get(link_key, link_key)
-    
+
     # Для чата, новостей, резерва - генерируем ссылку
     if link_key in ["chat", "news", "reserve"]:
         chat_id = get_chat_id(link_key)
         if not chat_id:
             await callback.message.answer(f"❌ {link_name} не настроен")
             return
-        
+
         try:
             # Генерируем инвайт-ссылку на 30 минут для 1 пользователя
             from datetime import datetime, timedelta
             expire_date = datetime.now() + timedelta(minutes=30)
-            
+
             link = await callback.bot.create_chat_invite_link(
                 chat_id=chat_id,
                 member_limit=1,
                 expire_date=expire_date
             )
-            
-            # Формируем сообщение
+
+            # Формируем сообщение с жирным заголовком
             await callback.message.answer(
-                f"{link_name}\n\n"
+                f"<b>{link_name}</b>\n\n"
                 f"🔗 Ваша персональная ссылка готова.\n\n"
                 f"⏳ Действует 30 минут\n"
                 f"👤 Доступна для одного использования\n\n"
                 f"По истечении таймера вы сможете запросить новую ссылку.\n\n"
-                f"{link.invite_link}"
+                f"{link.invite_link}",
+                parse_mode="HTML"
             )
         except Exception as e:
             await callback.message.answer(f"❌ Ошибка при генерации ссылки: {e}")
-    
+
     # Для бота, CEO, оператора - фиксированные ссылки
     else:
         url = get_link(link_key)
