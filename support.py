@@ -103,6 +103,19 @@ async def handle_operator_reply(message: types.Message):
         await message.answer("❌ Не удалось определить пользователя")
         return
 
+    # Логи для отладки
+    logger.info(f"user_id={user_id}")
+    logger.info(f"type={type(user_id)}")
+
+    # Проверяем chat
+    try:
+        chat = await message.bot.get_chat(user_id)
+        logger.info(chat)
+    except Exception as e:
+        logger.error(f"get_chat error: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
+        return
+
     # Получаем имя оператора
     operator_name = user.first_name or user.username or str(user.id)
 
