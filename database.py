@@ -18,6 +18,13 @@ def init_db():
                 is_blocked INTEGER DEFAULT 0
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_links (
+                user_id INTEGER PRIMARY KEY,
+                link_type TEXT,
+                created_at INTEGER
+            )
+        """)
         conn.commit()
 
 def add_user(telegram_id: int, username: str = None, first_name: str = None):
@@ -57,4 +64,28 @@ def mark_user_blocked(telegram_id: int):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET is_blocked = 1 WHERE telegram_id = ?", (telegram_id,))
+        conn.commit()
+
+def get_user_link(user_id: int):
+    """Получить активную ссылку пользователя"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT link_type, created_at FROM user_links WHERE user_id = ?", (user_id,))
+        return cursor.fetchone()
+
+def save_user_link(user_id: int, link_type: str, created_at: int):
+    """Сохранить ссылку пользователя"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO user_links (user_id, link_type, created_at) VALUES (?, ?, ?)",
+            (user_id, link_type, created_at)
+        )
+        conn.commit()
+
+def delete_user_link(user_id: int):
+    """Удалить ссылку пользователя"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_links WHERE user_id = ?", (user_id,))
         conn.commit()
