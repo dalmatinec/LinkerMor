@@ -2,11 +2,11 @@ import logging
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 from config import ADMIN_IDS
 from database import get_user_count, get_active_user_count, get_blocked_user_count
-from utils import get_links, save_links, get_operators, save_operators, load_links
+from utils import load_links, save_links, get_operators, save_operators, get_link
 from keyboards import admin_panel, main_menu, cancel_button
 from states import EditLinkStates, EditOperatorsStates
 
@@ -70,7 +70,6 @@ async def admin_edit_links(message: types.Message, state: FSMContext):
     link_list = "\n".join([f"• {key}: {value or 'не указана'}" for key, value in links.items()])
     
     # Создаем клавиатуру со ссылками
-    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     buttons = []
     for key in links.keys():
         buttons.append([KeyboardButton(text=key)])
@@ -194,7 +193,6 @@ async def process_operator_input(message: types.Message, state: FSMContext):
             return
         
         # Создаем клавиатуру для выбора оператора на удаление
-        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
         buttons = []
         for op in operators:
             buttons.append([KeyboardButton(text=str(op))])
