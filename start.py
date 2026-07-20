@@ -34,6 +34,11 @@ def load_welcome_text():
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
+    
+    # Игнорируем команду в группах
+    if message.chat.type in ["group", "supergroup"]:
+        return
+    
     user = message.from_user
 
     # Регистрация пользователя
@@ -64,6 +69,11 @@ async def cmd_start(message: types.Message):
 async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
     await callback.answer()
+    
+    # Игнорируем нажатия в группах
+    if callback.message.chat.type in ["group", "supergroup"]:
+        await callback.answer("❌ Используйте бота в личных сообщениях")
+        return
 
     link_key = callback.data.replace("link_", "")
     link_name = LINK_NAMES.get(link_key, link_key)
@@ -86,36 +96,49 @@ async def callback_link(callback: types.CallbackQuery):
                 expire_date=expire_date
             )
 
-            # Формируем сообщение с жирным заголовком
-            await callback.message.answer(
-                f"<b>{link_name}</b>\n\n"
-                f"🔗 Ваша персональная ссылка готова.\n\n"
-                f"⏳ Действует 30 минут\n"
-                f"👤 Доступна для одного использования\n\n"
-                f"По истечении таймера вы сможете запросить новую ссылку.\n\n"
-                f"{link.invite_link}",
+            # Отправляем ссылку в ЛС пользователя
+            await callback.bot.send_message(
+                chat_id=callback.from_user.id,
+                text=(
+                    f"<b>{link_name}</b>\n\n"
+                    f"🔗 Ваша персональная ссылка готова.\n\n"
+                    f"⏳ Действует 30 минут\n"
+                    f"👤 Доступна для одного использования\n\n"
+                    f"По истечении таймера вы сможете запросить новую ссылку.\n\n"
+                    f"{link.invite_link}"
+                ),
                 parse_mode="HTML"
             )
         except Exception as e:
-            await callback.message.answer(f"❌ Ошибка при генерации ссылки: {e}")
+            await callback.bot.send_message(
+                chat_id=callback.from_user.id,
+                text=f"❌ Ошибка при генерации ссылки: {e}"
+            )
 
     # Для бота, CEO, оператора - фиксированные ссылки
     else:
         url = get_link(link_key)
         if url:
-            await callback.message.answer(
-                f"{link_name}\n\n"
-                f"🔗 {url}"
+            await callback.bot.send_message(
+                chat_id=callback.from_user.id,
+                text=f"{link_name}\n\n🔗 {url}"
             )
         else:
-            await callback.message.answer(
-                f"❌ Ссылка не настроена"
+            await callback.bot.send_message(
+                chat_id=callback.from_user.id,
+                text="❌ Ссылка не настроена"
             )
 
 @router.callback_query(F.data == "support")
 async def callback_support(callback: types.CallbackQuery):
     """Обработчик кнопки 'Связаться с оператором'"""
     await callback.answer()
+    
+    # Игнорируем нажатия в группах
+    if callback.message.chat.type in ["group", "supergroup"]:
+        await callback.answer("❌ Используйте бота в личных сообщениях")
+        return
+    
     await callback.message.delete()
     await callback.message.answer(
         "Опишите проблему одним сообщением.\n"
@@ -128,8 +151,13 @@ async def callback_support(callback: types.CallbackQuery):
 async def callback_cancel(callback: types.CallbackQuery):
     """Отмена обращения"""
     await callback.answer()
+    
+    # Игнорируем нажатия в группах
+    if callback.message.chat.type in ["group", "supergroup"]:
+        await callback.answer("❌ Используйте бота в личных сообщениях")
+        return
+    
     await callback.message.delete()
     await callback.message.answer(
-        "❌ Обращение отменено",
-        reply_markup=main_menu()
+        "❌ Обращение отменено"
     )
