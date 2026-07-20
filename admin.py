@@ -7,7 +7,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from config import ADMIN_IDS
 from database import get_user_count, get_active_user_count, get_blocked_user_count
 from utils import load_links, save_links, get_operators, save_operators, get_link
-from keyboards import admin_panel, main_menu, cancel_button
+from keyboards import admin_panel, main_menu, cancel_inline
 from states import EditLinkStates, EditOperatorsStates
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ async def process_link_choice(message: types.Message, state: FSMContext):
     links = data.get("links", {})
     
     if message.text not in links:
-        await message.answer("❌ Неверный выбор. Попробуйте снова.")
+        await message.answer("❌ Неверный выбор. Попробуте снова.")
         return
     
     await state.update_data(selected_link=message.text)
@@ -109,7 +109,7 @@ async def process_link_choice(message: types.Message, state: FSMContext):
     await message.answer(
         f"Введите новое значение для ссылки: {message.text}\n"
         f"Текущее: {links[message.text] or 'не указана'}",
-        reply_markup=cancel_button()
+        reply_markup=cancel_inline()
     )
 
 @router.message(EditLinkStates.entering_value)
@@ -161,7 +161,7 @@ async def admin_edit_operators(message: types.Message, state: FSMContext):
         f"Текущие операторы:\n{operator_list}\n\n"
         f"Введите Telegram ID оператора для добавления\n"
         f"или отправьте 0 для удаления оператора.",
-        reply_markup=cancel_button()
+        reply_markup=cancel_inline()
     )
 
 @router.message(EditOperatorsStates.entering_operator)
