@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils import get_link
 
 def main_menu():
@@ -28,11 +28,11 @@ def cancel_inline():
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def admin_panel():
-    """Админ-панель (Reply)"""
+    """Админ-панель (инлайн)"""
     buttons = [
-        [KeyboardButton(text="📊 Статистика")],
-        [KeyboardButton(text="🔗 Изменить ссылки")],
-        [KeyboardButton(text="👨‍💻 Изменить операторов")],
-        [KeyboardButton(text="◀️ Назад в меню")]
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="🔗 Изменить ссылки", callback_data="admin_edit_links")],
+        [InlineKeyboardButton(text="👨‍💻 Изменить операторов", callback_data="admin_edit_operators")],
+        [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="admin_back_to_menu")]
     ]
-    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
