@@ -16,16 +16,6 @@ router = Router()
 # Словарь для хранения сообщений пользователей
 user_messages = {}
 
-@router.callback_query(F.data == "cancel_support")
-async def callback_cancel(callback: types.CallbackQuery):
-    """Отмена обращения через инлайн кнопку"""
-    await callback.answer()
-    await callback.message.delete()
-    await callback.message.answer(
-        "❌ Обращение отменено",
-        reply_markup=main_menu()
-    )
-
 @router.message(F.text)
 async def handle_support_message(message: types.Message):
     """Обработка текстовых сообщений в режиме поддержки"""
@@ -79,13 +69,13 @@ async def handle_support_message(message: types.Message):
         except Exception as e:
             logger.error(f"Failed to send to {recipient_id}: {e}")
     
-    # Удаляем сообщение пользователя
-    await message.delete()
+    # НЕ УДАЛЯЕМ сообщение пользователя
     
     if sent_count > 0:
         await message.answer(
             "✅ Ваше обращение отправлено операторам.\n"
-            "Ответ придет в ближайшее время."
+            "Ответ придет в ближайшее время.\n\n"
+            "Для выхода в главное меню нажмите /start"
         )
     else:
         await message.answer(
