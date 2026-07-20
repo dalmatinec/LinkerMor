@@ -1,4 +1,6 @@
 import logging
+import time
+from datetime import datetime, timedelta
 from aiogram import Router, types, F
 from aiogram.types import ReplyKeyboardRemove
 
@@ -10,14 +12,21 @@ from keyboards import main_menu
 logger = logging.getLogger(__name__)
 router = Router()
 
+# Словарь для хранения времени последнего обращения пользователя
+user_last_request = {}
+
 # Словарь для хранения сообщений пользователей
-# {user_id: {"text": str, "message_id": int, "date": str}}
 user_messages = {}
 
-@router.message(F.text == "❌ Отмена")
-async def cancel_support(message: types.Message):
-    """Отмена обращения"""
-    await message.answer(
+# Лимит 15 минут
+REQUEST_LIMIT_MINUTES = 15
+
+@router.callback_query(F.data == "cancel_support")
+async def callback_cancel(callback: types.CallbackQuery):
+    """Отмена обращения через инлайн кнопку"""
+    await callback.answer()
+    await callback.message.delete()
+    await callback.message.answer(
         "❌ Обращение отменено",
         reply_markup=main_menu()
     )
@@ -36,6 +45,23 @@ async def handle_support_message(message: types.Message):
     if user.id in operators or user.id in ADMIN_IDS:
         return
     
+    # Проверяем лимит 15 минут
+    current_time = time.time()
+    if user.id in user_last_request:
+        time_diff = current_time - user_last_request[user.id]
+        if time_diff < REQUEST_LIMIT_MINUTES * 60:
+            remaining = int((REQUEST_LIMIT_MINUTES * 60 - time_diff) / 60)
+            remaining_seconds = int((REQUEST_LIMIT_MINUTES * 60 - time_diff) % 60)
+            
+            await message.delete()
+            
+            await message.answer(
+                f"⏳ Вы уже отправляли обращение.\n"
+                f"Попробуйте снова через {remaining} мин. {remaining_seconds} сек.",
+                reply_markup=main_menu()
+            )
+            return
+    
     # Получаем операторов и админов
     recipients = list(set(ADMIN_IDS + operators))
     
@@ -46,6 +72,9 @@ async def handle_support_message(message: types.Message):
             reply_markup=main_menu()
         )
         return
+    
+    # Сохраняем время обращения
+    user_last_request[user.id] = current_time
     
     # Сохраняем сообщение пользователя
     user_messages[user.id] = {
@@ -74,11 +103,13 @@ async def handle_support_message(message: types.Message):
         except Exception as e:
             logger.error(f"Failed to send to {recipient_id}: {e}")
     
+    # Удаляем сообщение пользователя
+    await message.delete()
+    
     if sent_count > 0:
         await message.answer(
             "✅ Ваше обращение отправлено операторам.\n"
-            "Ответ придет прямо в этот чат.",
-            reply_markup=main_menu()
+            "Ответ придет в ближайшее время."
         )
     else:
         await message.answer(
