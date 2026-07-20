@@ -35,6 +35,7 @@ def save_links(data):
 def get_link(key: str) -> str:
     """Получает ссылку по ключу"""
     data = load_links()
+    print(f"DEBUG: get_link({key}) -> {data}")  # Временный дебаг
     return data["links"].get(key, "")
 
 def get_operators() -> list:
@@ -60,14 +61,4 @@ def format_user_message(user_id: int, username: str, first_name: str, text: str)
         f"{text}\n\n"
         f"━━━━━━━━━━━━━━\n\n"
         f"Ответьте реплаем."
-    )
-
-def format_stats(total: int, sent: int, failed: int, blocked: int, errors: int) -> str:
-    """Форматирует статистику рассылки"""
-    return (
-        f"📨 Рассылка завершена\n\n"
-        f"👥 Всего пользователей: {total}\n"
-        f"✅ Отправлено: {sent}\n"
-        f"🚫 Заблокировали бота: {blocked}\n"
-        f"❌ Ошибок: {errors}"
     )
