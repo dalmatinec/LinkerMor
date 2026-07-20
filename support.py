@@ -15,7 +15,7 @@ router = Router()
 # Словарь для хранения соответствия: message_id сообщения оператору -> user_id
 support_messages = {}
 
-@router.message(F.text)
+@router.message(F.text, ~F.reply_to_message)
 async def handle_support_message(message: types.Message):
     """Обработка текстовых сообщений в режиме поддержки"""
     user = message.from_user
