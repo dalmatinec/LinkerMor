@@ -1,0 +1,8 @@
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+
+ADMIN_IDS = [
+    123456789,
+    987654321,
+]
+
+DB_NAME = "bot_database.db"
