@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from utils import get_link
 
 def main_menu():
     """Главное меню - инлайн кнопки"""
@@ -9,11 +10,11 @@ def main_menu():
         ],
         [
             InlineKeyboardButton(text="🛟 Резерв", callback_data="link_reserve"),
-            InlineKeyboardButton(text="🤖 Бот", callback_data="link_bot")
+            InlineKeyboardButton(text="🤖 Бот", url=get_link("bot"))
         ],
         [
-            InlineKeyboardButton(text="👨‍💼 CEO", callback_data="link_ceo"),
-            InlineKeyboardButton(text="🎧 Оператор", callback_data="link_operator")
+            InlineKeyboardButton(text="👨‍💼 CEO", url=get_link("ceo")),
+            InlineKeyboardButton(text="🎧 Оператор", url=get_link("operator"))
         ],
         [
             InlineKeyboardButton(text="✉️ Связаться с оператором", callback_data="support")
