@@ -115,8 +115,9 @@ async def cancel_edit_links(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     await callback.message.answer(
-        "❌ Отменено",
-        reply_markup=admin_panel()
+        "❌ Действие отменено\n\n"
+        "Выйти в главное меню - /start\n"
+        "Войти в админ панель - /admin"
     )
 
 @router.message(EditLinkStates.entering_value)
@@ -128,8 +129,9 @@ async def process_link_value(message: types.Message, state: FSMContext):
     if message.text == "❌ Отмена":
         await state.clear()
         await message.answer(
-            "❌ Отменено",
-            reply_markup=admin_panel()
+            "❌ Действие отменено\n\n"
+            "Выйти в главное меню - /start\n"
+            "Войти в админ панель - /admin"
         )
         return
 
@@ -139,7 +141,11 @@ async def process_link_value(message: types.Message, state: FSMContext):
 
     if not link_key:
         await state.clear()
-        await message.answer("❌ Ошибка. Попробуйте снова.", reply_markup=admin_panel())
+        await message.answer(
+            "❌ Действие отменено\n\n"
+            "Выйти в главное меню - /start\n"
+            "Войти в админ панель - /admin"
+        )
         return
 
     data["links"][link_key] = message.text
@@ -176,8 +182,9 @@ async def process_operator_input(message: types.Message, state: FSMContext):
     if message.text == "❌ Отмена":
         await state.clear()
         await message.answer(
-            "❌ Отменено",
-            reply_markup=admin_panel()
+            "❌ Действие отменено\n\n"
+            "Выйти в главное меню - /start\n"
+            "Войти в админ панель - /admin"
         )
         return
 
@@ -256,8 +263,9 @@ async def cancel_delete_operator(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
     await callback.message.answer(
-        "❌ Отменено",
-        reply_markup=admin_panel()
+        "❌ Действие отменено\n\n"
+        "Выйти в главное меню - /start\n"
+        "Войти в админ панель - /admin"
     )
 
 # ============ КОМАНДЫ ============
