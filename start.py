@@ -2,11 +2,13 @@
 
 from aiogram import Router, types, F
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import FSInputFile
+import json
+import os
 
 from database import add_user
 from keyboards import main_menu, cancel_inline
-from utils import get_link
+from utils import get_link, get_chat_id
 
 router = Router()
 
@@ -16,10 +18,18 @@ LINK_NAMES = {
     "news": "📢 Новости",
     "reserve": "🛟 Резерв",
     "bot": "🤖 Бот",
-    "website": "🌐 Сайт",
     "ceo": "👨‍💼 CEO",
     "operator": "🎧 Оператор"
 }
+
+def load_welcome_text():
+    """Загружает приветственный текст из text.json"""
+    try:
+        with open("text.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("welcome", "")
+    except:
+        return "Добро пожаловать!"
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -33,12 +43,22 @@ async def cmd_start(message: types.Message):
         first_name=user.first_name
     )
     
-    await message.answer(
-        f"👋 Привет, {user.first_name}!\n\n"
-        f"Добро пожаловать в нашего бота!\n"
-        f"Используй кнопки меню для навигации.",
-        reply_markup=main_menu()
-    )
+    # Загружаем текст приветствия и подставляем имя
+    welcome_text = load_welcome_text().format(first_name=user.first_name)
+    
+    # Отправляем фото с подписью
+    if os.path.exists("start.jpg"):
+        photo = FSInputFile("start.jpg")
+        await message.answer_photo(
+            photo=photo,
+            caption=welcome_text,
+            reply_markup=main_menu()
+        )
+    else:
+        await message.answer(
+            welcome_text,
+            reply_markup=main_menu()
+        )
 
 @router.callback_query(F.data.startswith("link_"))
 async def callback_link(callback: types.CallbackQuery):
@@ -47,17 +67,49 @@ async def callback_link(callback: types.CallbackQuery):
     
     link_key = callback.data.replace("link_", "")
     link_name = LINK_NAMES.get(link_key, link_key)
-    url = get_link(link_key)
     
-    if url:
-        await callback.message.answer(
-            f"{link_name}\n\n"
-            f"🔗 {url}"
-        )
+    # Для чата, новостей, резерва - генерируем ссылку
+    if link_key in ["chat", "news", "reserve"]:
+        chat_id = get_chat_id(link_key)
+        if not chat_id:
+            await callback.message.answer(f"❌ {link_name} не настроен")
+            return
+        
+        try:
+            # Генерируем инвайт-ссылку на 30 минут для 1 пользователя
+            from datetime import datetime, timedelta
+            expire_date = datetime.now() + timedelta(minutes=30)
+            
+            link = await callback.bot.create_chat_invite_link(
+                chat_id=chat_id,
+                member_limit=1,
+                expire_date=expire_date
+            )
+            
+            # Формируем сообщение
+            await callback.message.answer(
+                f"{link_name}\n\n"
+                f"🔗 Ваша персональная ссылка готова.\n\n"
+                f"⏳ Действует 30 минут\n"
+                f"👤 Доступна для одного использования\n\n"
+                f"По истечении таймера вы сможете запросить новую ссылку.\n\n"
+                f"{link.invite_link}"
+            )
+        except Exception as e:
+            await callback.message.answer(f"❌ Ошибка при генерации ссылки: {e}")
+    
+    # Для бота, CEO, оператора - фиксированные ссылки
     else:
-        await callback.message.answer(
-            f"❌ Ссылка не настроена"
-        )
+        url = get_link(link_key)
+        if url:
+            await callback.message.answer(
+                f"{link_name}\n\n"
+                f"🔗 {url}"
+            )
+        else:
+            await callback.message.answer(
+                f"❌ Ссылка не настроена"
+            )
 
 @router.callback_query(F.data == "support")
 async def callback_support(callback: types.CallbackQuery):
