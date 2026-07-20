@@ -31,8 +31,12 @@ async def handle_support_message(message: types.Message):
     if message.text.startswith("/"):
         return
     
-    # Получаем операторов и админов
+    # Проверяем, не является ли отправитель оператором или админом
     operators = get_operators()
+    if user.id in operators or user.id in ADMIN_IDS:
+        return
+    
+    # Получаем операторов и админов
     recipients = list(set(ADMIN_IDS + operators))
     
     if not recipients:
@@ -85,7 +89,7 @@ async def handle_support_message(message: types.Message):
 
 @router.message(F.reply_to_message)
 async def handle_operator_reply(message: types.Message):
-    """Обработка ответа оператора реплаем"""
+    """Обработка ответа оператора реплаем (поддерживает любые типы сообщений)"""
     user = message.from_user
     
     # Проверяем, является ли отправитель оператором
@@ -103,7 +107,6 @@ async def handle_operator_reply(message: types.Message):
         return
     
     # Пытаемся найти ID пользователя из текста сообщения
-    # Ищем строку "🆔 ID\n123456789"
     text = replied_msg.text
     user_id = None
     lines = text.split("\n")
@@ -119,32 +122,118 @@ async def handle_operator_reply(message: types.Message):
         await message.answer("❌ Не удалось определить пользователя")
         return
     
-    # Формируем ответ пользователю
-    answer_text = (
-        f"💬 Ответ поддержки\n\n"
-        f"👨‍💻 Ответил оператор\n\n"
-        f"━━━━━━━━━━━━━━\n\n"
-        f"{message.text}\n\n"
-        f"━━━━━━━━━━━━━━"
-    )
+    # Получаем имя оператора
+    operator_name = user.first_name or user.username or str(user.id)
     
-    try:
-        await message.bot.send_message(
-            chat_id=user_id,
-            text=answer_text
+    # Если ответ - текстовое сообщение
+    if message.text:
+        answer_text = (
+            f"💬 Ответ поддержки\n\n"
+            f"👨‍💻 Ответил: {operator_name}\n\n"
+            f"━━━━━━━━━━━━━━\n\n"
+            f"{message.text}\n\n"
+            f"━━━━━━━━━━━━━━"
         )
-        await message.answer("✅ Ответ отправлен пользователю")
-    except Exception as e:
-        logger.error(f"Failed to send reply to {user_id}: {e}")
-        await message.answer(f"❌ Ошибка при отправке: {e}")
+        try:
+            await message.bot.send_message(
+                chat_id=user_id,
+                text=answer_text
+            )
+            await message.answer("✅ Ответ отправлен пользователю")
+        except Exception as e:
+            logger.error(f"Failed to send reply to {user_id}: {e}")
+            await message.answer(f"❌ Ошибка при отправке: {e}")
+    
+    # Если ответ - фото
+    elif message.photo:
+        try:
+            caption = (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━\n\n"
+                f"{message.caption or ''}\n\n"
+                f"━━━━━━━━━━━━━━"
+            ) if message.caption else (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━"
+            )
+            await message.bot.send_photo(
+                chat_id=user_id,
+                photo=message.photo[-1].file_id,
+                caption=caption
+            )
+            await message.answer("✅ Ответ отправлен пользователю")
+        except Exception as e:
+            logger.error(f"Failed to send photo reply to {user_id}: {e}")
+            await message.answer(f"❌ Ошибка при отправке: {e}")
+    
+    # Если ответ - видео
+    elif message.video:
+        try:
+            caption = (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━\n\n"
+                f"{message.caption or ''}\n\n"
+                f"━━━━━━━━━━━━━━"
+            ) if message.caption else (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━"
+            )
+            await message.bot.send_video(
+                chat_id=user_id,
+                video=message.video.file_id,
+                caption=caption
+            )
+            await message.answer("✅ Ответ отправлен пользователю")
+        except Exception as e:
+            logger.error(f"Failed to send video reply to {user_id}: {e}")
+            await message.answer(f"❌ Ошибка при отправке: {e}")
+    
+    # Если ответ - документ
+    elif message.document:
+        try:
+            caption = (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━\n\n"
+                f"{message.caption or ''}\n\n"
+                f"━━━━━━━━━━━━━━"
+            ) if message.caption else (
+                f"💬 Ответ поддержки\n\n"
+                f"👨‍💻 Ответил: {operator_name}\n\n"
+                f"━━━━━━━━━━━━━━"
+            )
+            await message.bot.send_document(
+                chat_id=user_id,
+                document=message.document.file_id,
+                caption=caption
+            )
+            await message.answer("✅ Ответ отправлен пользователю")
+        except Exception as e:
+            logger.error(f"Failed to send document reply to {user_id}: {e}")
+            await message.answer(f"❌ Ошибка при отправке: {e}")
+    
+    # Если ответ - другие типы
+    else:
+        await message.answer("❌ Этот тип сообщения не поддерживается для отправки пользователю")
 
-# Игнорируем все остальные сообщения
+# Игнорируем все неподдерживаемые сообщения от пользователей
 @router.message(F.content_type.in_({
     "photo", "video", "document", "animation", 
     "voice", "video_note", "sticker"
 }))
 async def handle_unsupported(message: types.Message):
-    """Обработка неподдерживаемых типов сообщений"""
+    """Обработка неподдерживаемых типов сообщений от пользователей"""
+    user = message.from_user
+    
+    # Проверяем, не является ли отправитель оператором или админом
+    operators = get_operators()
+    if user.id in operators or user.id in ADMIN_IDS:
+        return
+    
     await message.answer(
         "Поддерживаются только текстовые сообщения.",
         reply_markup=main_menu()
