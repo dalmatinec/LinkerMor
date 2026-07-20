@@ -1,6 +1,7 @@
+# support.py
+
 import logging
-import time
-from datetime import datetime, timedelta
+import re
 from aiogram import Router, types, F
 from aiogram.types import ReplyKeyboardRemove
 
@@ -71,7 +72,8 @@ async def handle_support_message(message: types.Message):
         try:
             await message.bot.send_message(
                 chat_id=recipient_id,
-                text=formatted
+                text=formatted,
+                parse_mode="HTML"
             )
             sent_count += 1
         except Exception as e:
@@ -94,34 +96,40 @@ async def handle_support_message(message: types.Message):
 
 @router.message(F.reply_to_message)
 async def handle_operator_reply(message: types.Message):
-    """Обработка ответа оператора реплаем (поддерживает любые типы сообщений)"""
+    """Обработка ответа оператора реплаем"""
     user = message.from_user
+    
+    # Логи для отладки
+    logger.info(f"Reply from user: {user.id}")
     
     # Проверяем, является ли отправитель оператором
     operators = get_operators()
+    logger.info(f"Operators list: {operators}")
+    logger.info(f"Is operator? {user.id in operators}")
     
     # Если это не оператор - игнорируем
     if user.id not in operators:
+        logger.info("Not operator, ignoring")
         return
     
     # Получаем оригинальное сообщение (реплай)
     replied_msg = message.reply_to_message
     
-    # Проверяем, что это сообщение от бота (формат обращения)
-    if not replied_msg or replied_msg.from_user.id != (await message.bot.get_me()).id:
+    # Проверяем, что это сообщение от бота
+    bot_id = (await message.bot.get_me()).id
+    if not replied_msg or replied_msg.from_user.id != bot_id:
+        logger.info("Not a reply to bot message")
         return
     
     # Пытаемся найти ID пользователя из текста сообщения
     text = replied_msg.text
     user_id = None
-    lines = text.split("\n")
-    for i, line in enumerate(lines):
-        if "🆔 ID" in line and i + 1 < len(lines):
-            try:
-                user_id = int(lines[i + 1].strip())
-                break
-            except:
-                pass
+    
+    # Ищем ID в формате "🆔 ID\n123456789"
+    match = re.search(r'🆔 ID\n(\d+)', text)
+    if match:
+        user_id = int(match.group(1))
+        logger.info(f"Found user_id: {user_id}")
     
     if not user_id:
         await message.answer("❌ Не удалось определить пользователя")
@@ -145,6 +153,7 @@ async def handle_operator_reply(message: types.Message):
                 text=answer_text
             )
             await message.answer("✅ Ответ отправлен пользователю")
+            logger.info(f"Reply sent to {user_id}")
         except Exception as e:
             logger.error(f"Failed to send reply to {user_id}: {e}")
             await message.answer(f"❌ Ошибка при отправке: {e}")
@@ -169,6 +178,7 @@ async def handle_operator_reply(message: types.Message):
                 caption=caption
             )
             await message.answer("✅ Ответ отправлен пользователю")
+            logger.info(f"Photo reply sent to {user_id}")
         except Exception as e:
             logger.error(f"Failed to send photo reply to {user_id}: {e}")
             await message.answer(f"❌ Ошибка при отправке: {e}")
@@ -193,6 +203,7 @@ async def handle_operator_reply(message: types.Message):
                 caption=caption
             )
             await message.answer("✅ Ответ отправлен пользователю")
+            logger.info(f"Video reply sent to {user_id}")
         except Exception as e:
             logger.error(f"Failed to send video reply to {user_id}: {e}")
             await message.answer(f"❌ Ошибка при отправке: {e}")
@@ -217,6 +228,7 @@ async def handle_operator_reply(message: types.Message):
                 caption=caption
             )
             await message.answer("✅ Ответ отправлен пользователю")
+            logger.info(f"Document reply sent to {user_id}")
         except Exception as e:
             logger.error(f"Failed to send document reply to {user_id}: {e}")
             await message.answer(f"❌ Ошибка при отправке: {e}")
