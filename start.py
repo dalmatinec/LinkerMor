@@ -1,8 +1,9 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardRemove
 
 from database import add_user
-from keyboards import main_menu, cancel_button
+from keyboards import main_menu, cancel_inline
 from utils import get_link
 
 router = Router()
@@ -42,13 +43,8 @@ async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
     await callback.answer()
     
-    # Получаем ключ ссылки (chat, news, etc.)
     link_key = callback.data.replace("link_", "")
-    
-    # Получаем название кнопки
     link_name = LINK_NAMES.get(link_key, link_key)
-    
-    # Получаем ссылку
     url = get_link(link_key)
     
     if url:
@@ -69,5 +65,15 @@ async def callback_support(callback: types.CallbackQuery):
         "Опишите проблему одним сообщением.\n"
         "Поддерживаются только текстовые сообщения.\n\n"
         "Ответ придет прямо в этот чат.",
-        reply_markup=cancel_button()
+        reply_markup=cancel_inline()
+    )
+
+@router.callback_query(F.data == "cancel_support")
+async def callback_cancel(callback: types.CallbackQuery):
+    """Отмена обращения"""
+    await callback.answer()
+    await callback.message.delete()
+    await callback.message.answer(
+        "❌ Обращение отменено",
+        reply_markup=main_menu()
     )
