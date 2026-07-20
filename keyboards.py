@@ -12,9 +12,6 @@ def main_menu():
             InlineKeyboardButton(text="🤖 Бот", callback_data="link_bot")
         ],
         [
-            InlineKeyboardButton(text="🌐 Сайт", callback_data="link_website")
-        ],
-        [
             InlineKeyboardButton(text="👨‍💼 CEO", callback_data="link_ceo"),
             InlineKeyboardButton(text="🎧 Оператор", callback_data="link_operator")
         ],
