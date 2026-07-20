@@ -7,12 +7,13 @@ LINKS_FILE = "link.json"
 def ensure_link_json():
     if not os.path.exists(LINKS_FILE):
         default_data = {
+            "chats": {
+                "chat": None,
+                "news": None,
+                "reserve": None
+            },
             "links": {
-                "chat": "",
-                "news": "",
-                "reserve": "",
                 "bot": "",
-                "website": "",
                 "ceo": "",
                 "operator": ""
             },
@@ -31,12 +32,28 @@ def save_links(data):
 
 def get_link(key: str) -> str:
     data = load_links()
-    return data["links"].get(key, "")
+    return data.get("links", {}).get(key, "")
+
+def save_link(key: str, value: str):
+    data = load_links()
+    if "links" not in data:
+        data["links"] = {}
+    data["links"][key] = value
+    save_links(data)
+
+def get_chat_id(key: str):
+    data = load_links()
+    return data.get("chats", {}).get(key)
+
+def set_chat_id(key: str, chat_id: int):
+    data = load_links()
+    if "chats" not in data:
+        data["chats"] = {}
+    data["chats"][key] = chat_id
+    save_links(data)
 
 def get_operators() -> list:
     data = load_links()
-    print("LINK.JSON =", os.path.abspath(LINKS_FILE))
-    print("OPERATORS =", data.get("operators", []))
     return data.get("operators", [])
 
 def save_operators(operators: list):
