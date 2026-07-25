@@ -1,17 +1,15 @@
 # start.py
 from aiogram import Router, types, F
 from aiogram.filters import Command
-from aiogram.types import FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import FSInputFile, InlineKeyboardMarkup,
+InlineKeyboardButton
 import json
 import os
 import time
-
 from database import add_user, get_user_link, save_user_link, delete_user_link
 from keyboards import main_menu, cancel_inline
 from utils import get_link, get_chat_id
-
 router = Router()
-
 # Словарь с названиями ссылок
 LINK_NAMES = {
     "chat": "💬 Чат",
@@ -21,7 +19,6 @@ LINK_NAMES = {
     "ceo": "👨‍💼 CEO",
     "operator": "🎧 Оператор"
 }
-
 def load_welcome_text():
     """Загружает приветственный текст из text.json"""
     try:
@@ -30,7 +27,6 @@ def load_welcome_text():
             return data.get("welcome", "")
     except:
         return "Добро пожаловать!"
-
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
@@ -59,14 +55,12 @@ async def cmd_start(message: types.Message):
             welcome_text,
             reply_markup=main_menu()
         )
-
 @router.callback_query(F.data.startswith("link_"))
 async def callback_link(callback: types.CallbackQuery):
     """Обработчик кнопок со ссылками"""
     # НЕ вызываем await callback.answer() в начале!
     # Игнорируем нажатия в группах
-    if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
+    if callback.message.chat.type in ["group", "supergroup"]:        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
         return
     link_key = callback.data.replace("link_", "")
     link_name = LINK_NAMES.get(link_key, link_key)
@@ -98,22 +92,19 @@ async def callback_link(callback: types.CallbackQuery):
             expire_date = datetime.now() + timedelta(minutes=30)
             link = await callback.bot.create_chat_invite_link(
                 chat_id=chat_id,
-                member_limit=1,
-                expire_date=expire_date
+                expire_date=expire_date,
+                creates_join_request=True
             )
             save_user_link(user_id, link_key, int(time.time()))
-            
             # Кнопка с ссылкой
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🎟️ Вступить", url=link.invite_link)]
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[                [InlineKeyboardButton(text="🎟️ Вступить", url=link.invite_link)]
             ])
-            
             await callback.bot.send_message(
                 chat_id=callback.from_user.id,
                 text=(
                     f"🎟️ Приглашение готово\n\n"
-                    f"⏳ Действует: 30 минут\n"
-                    f"🎯 Использование: 1 раз\n\n"
+                    f"📝 Ожидайте одобрения заявки администратором.\n\n"
+                    f"⏳  Действует: 30 минут\n"
                     f"🔄 После истечения срока можно запросить новую ссылку."
                 ),
                 reply_markup=keyboard
@@ -132,14 +123,12 @@ async def callback_link(callback: types.CallbackQuery):
             await callback.answer()
         else:
             await callback.answer("❌  Ссылка не настроена", show_alert=True)
-
 @router.callback_query(F.data == "support")
 async def callback_support(callback: types.CallbackQuery):
     """Обработчик кнопки 'Связаться с оператором'"""
     await callback.answer()
     # Игнорируем нажатия в группах
-    if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
+    if callback.message.chat.type in ["group", "supergroup"]:        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
         return
     await callback.message.delete()
     await callback.message.answer(
@@ -148,14 +137,12 @@ async def callback_support(callback: types.CallbackQuery):
         "Ответ придет прямо в этот чат.",
         reply_markup=cancel_inline()
     )
-
 @router.callback_query(F.data == "cancel_support")
 async def callback_cancel(callback: types.CallbackQuery):
     """Отмена обращения"""
     await callback.answer()
     # Игнорируем нажатия в группах
-    if callback.message.chat.type in ["group", "supergroup"]:
-        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
+    if callback.message.chat.type in ["group", "supergroup"]:        await callback.answer("❌  Используйте бота в личных сообщениях", show_alert=True)
         return
     await callback.message.delete()
     await callback.message.answer(
