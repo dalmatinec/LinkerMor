@@ -194,3 +194,37 @@ def test_callback_data_fits_telegram_limit(project_root: Path) -> None:
             oversized.append(packed)
 
     assert not oversized, f"callback_data превышает лимит: {oversized}"
+
+
+def test_extra_does_not_use_reserved_logging_names(project_root: Path) -> None:
+    """Зарезервированные имена в extra роняют приложение при записи лога.
+
+    ``logging`` хранит в записи собственные поля — ``module``,
+    ``filename``, ``name`` и другие. Попытка положить такое имя в
+    ``extra`` вызывает KeyError, причём только когда уровень логирования
+    действительно включён: в тестах запись не создаётся, и ошибка
+    проявляется в первый же запуск на сервере.
+    """
+    import logging
+    import re
+
+    reserved = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__) | {
+        "message",
+        "asctime",
+        "taskName",
+    }
+    extra_pattern = re.compile(r"extra=\{([^}]*)\}", re.DOTALL)
+    key_pattern = re.compile(r'"([a-zA-Z_]+)":')
+
+    offenders: list[str] = []
+    for path in _source_files(project_root):
+        if path.relative_to(project_root).parts[0] in {"tests"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in extra_pattern.finditer(text):
+            for key in key_pattern.findall(match.group(1)):
+                if key in reserved:
+                    line = text[: match.start()].count("\n") + 1
+                    offenders.append(f"{path.relative_to(project_root)}:{line} — {key!r}")
+
+    assert not offenders, "Занятые именами logging поля в extra:\n" + "\n".join(offenders)

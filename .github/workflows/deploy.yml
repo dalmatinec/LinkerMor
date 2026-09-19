@@ -1,0 +1,23 @@
+name: Deploy
+
+# Обновление сервера без компьютера: достаточно слить ветку в GitHub.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Обновить и перезапустить бота
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/linkermor
+            git pull --ff-only
+            docker compose up -d --build
+            docker compose ps

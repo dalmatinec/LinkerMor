@@ -58,6 +58,8 @@ createdb linkermor_test                       # один раз
 
 ## Документация
 
+- [docs/DEPLOY.md](docs/DEPLOY.md) — развёртывание по шагам
+- [docs/CHECKLIST.md](docs/CHECKLIST.md) — чек-лист проверки после запуска
 - [docs/GUIDE.md](docs/GUIDE.md) — возможности, команды, требования к серверу
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — устройство проекта
 - [docs/DECISIONS.md](docs/DECISIONS.md) — принятые технические решения

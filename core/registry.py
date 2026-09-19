@@ -100,9 +100,11 @@ class ModuleRegistry:
         """Подключить роутеры модулей к диспетчеру в порядке приоритета."""
         for spec in self.sorted_specs():
             dispatcher.include_router(spec.router)
+            # Имя «module» занято самим logging: попытка положить его в
+            # extra роняет приложение на старте.
             log.info(
                 "модуль подключён",
-                extra={"module": spec.name, "priority": spec.priority},
+                extra={"module_name": spec.name, "priority": spec.priority},
             )
 
 

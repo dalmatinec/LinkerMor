@@ -9,6 +9,9 @@ import asyncio
 import contextlib
 import signal
 
+from aiogram.exceptions import TelegramNetworkError, TelegramUnauthorizedError
+from aiohttp import ClientError
+
 from core.bootstrap import ALLOWED_UPDATES, AppContext, build_app
 from core.config import get_settings
 from core.logging import get_logger, setup_logging
@@ -16,10 +19,36 @@ from core.logging import get_logger, setup_logging
 log = get_logger(__name__)
 
 
+async def check_connection(app: AppContext):
+    """Убедиться, что бот может говорить с Telegram.
+
+    Проверка отделена от запуска, чтобы две самые частые ошибки первого
+    запуска — опечатка в токене и закрытая сеть — выглядели как понятное
+    сообщение, а не как traceback на сорок строк.
+    """
+    try:
+        return await app.bot.get_me()
+    except TelegramUnauthorizedError:
+        log.error(
+            "Telegram отверг токен. Проверьте BOT_TOKEN в .env — "
+            "его выдаёт @BotFather, и он мог быть отозван"
+        )
+    except (TelegramNetworkError, ClientError, OSError) as exc:
+        log.error(
+            "нет связи с Telegram. Проверьте сеть сервера и доступность "
+            "api.telegram.org",
+            extra={"reason": str(exc)[:200]},
+        )
+    return None
+
+
 async def run(app: AppContext) -> None:
     """Принимать апдейты до сигнала остановки."""
+    me = await check_connection(app)
+    if me is None:
+        return
+
     app.scheduler.start()
-    me = await app.bot.get_me()
     log.info("бот запущен", extra={"bot": f"@{me.username}", "bot_id": me.id})
 
     # Владелец должен видеть каждый запуск: неожиданный запуск означает,
