@@ -62,7 +62,7 @@ async def test_sync_result_is_cached_per_chat(session) -> None:
 
     # Повторный вызов берёт данные из кеша и в Telegram не идёт.
     assert await service.sync(CHAT_ID) == 0
-    assert bot.calls == ["get_chat_administrators"]
+    assert bot.call_names == ["get_chat_administrators"]
 
 
 async def test_sync_demotes_admins_removed_while_bot_was_offline(session) -> None:

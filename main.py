@@ -18,6 +18,7 @@ log = get_logger(__name__)
 
 async def run(app: AppContext) -> None:
     """Принимать апдейты до сигнала остановки."""
+    app.scheduler.start()
     me = await app.bot.get_me()
     log.info("бот запущен", extra={"bot": f"@{me.username}", "bot_id": me.id})
 

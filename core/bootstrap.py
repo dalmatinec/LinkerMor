@@ -28,6 +28,8 @@ from middlewares.error import ErrorMiddleware
 from middlewares.logging import LoggingMiddleware
 from middlewares.services import ServicesMiddleware
 from sender.sender import Sender
+from tasks.expirations import EXPIRATION_INTERVAL, make_expiration_task
+from tasks.scheduler import Scheduler
 
 log = get_logger(__name__)
 
@@ -55,12 +57,14 @@ class AppContext:
     session_factory: async_sessionmaker[AsyncSession]
     redis: Redis
     cache: MemoryCache
+    scheduler: Scheduler
     registry: ModuleRegistry
     settings_registry: SettingsRegistry
     text_registry: TextRegistry
 
     async def shutdown(self) -> None:
         """Корректно освободить ресурсы. Порядок важен."""
+        await self.scheduler.stop()
         await self.bot.session.close()
         await self.engine.dispose()
         await self.redis.aclose()
@@ -117,6 +121,11 @@ def build_app(settings: Settings) -> AppContext:
     dispatcher["session_factory"] = session_factory
     dispatcher["cache"] = cache
     dispatcher["redis"] = redis
+    scheduler = Scheduler()
+    scheduler.add(
+        "expirations", EXPIRATION_INTERVAL, make_expiration_task(session_factory)
+    )
+
     dispatcher["sender"] = sender
     dispatcher["registry"] = registry
     dispatcher["settings_registry"] = settings_registry
@@ -130,6 +139,7 @@ def build_app(settings: Settings) -> AppContext:
         session_factory=session_factory,
         redis=redis,
         cache=cache,
+        scheduler=scheduler,
         registry=registry,
         settings_registry=settings_registry,
         text_registry=text_registry,
@@ -143,5 +153,6 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     Порядок в списке значения не имеет: очередь определяет ``priority``.
     """
     from mod_chats.spec import MODULE as chats
+    from mod_moderation.spec import MODULE as moderation
 
-    return [chats]
+    return [chats, moderation]
