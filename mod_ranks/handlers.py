@@ -67,7 +67,7 @@ async def cmd_rank(
     await sender.reply(message, await texts.render(message.chat.id, key, values))
 
 
-@router.message(Command("ranks"), InGroup(), ModuleEnabled("ranks"))
+@router.message(Command("lr", "ranks"), InGroup(), ModuleEnabled("ranks"))
 async def cmd_ranks(
     message: Message,
     session: AsyncSession,
@@ -90,7 +90,7 @@ async def cmd_ranks(
     await sender.reply(message, await texts.render(message.chat.id, "rank_list", values))
 
 
-@router.message(Command("addrank"), *ADMIN_COMMAND)
+@router.message(Command("ar", "addrank"), *ADMIN_COMMAND)
 async def cmd_add_rank(
     message: Message,
     command: CommandObject,
@@ -124,7 +124,7 @@ async def cmd_add_rank(
     await sender.reply(message, await texts.render(message.chat.id, "rank_added", values))
 
 
-@router.message(Command("delrank"), *ADMIN_COMMAND)
+@router.message(Command("dr", "delrank"), *ADMIN_COMMAND)
 async def cmd_delete_rank(
     message: Message,
     command: CommandObject,

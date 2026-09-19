@@ -110,6 +110,96 @@ TEXTS = [
         module="admin",
         description="Ввод прерван",
     ),
+    # ─── Содержимое чата ─────────────────────────────────────────────────────
+    TextDef(
+        key="admin_content",
+        default="Содержимое чата. Всё настраивается здесь, команды в группе не нужны.",
+        module="admin",
+        description="Экран раздела содержимого",
+    ),
+    TextDef(
+        key="admin_welcome_set",
+        default="Приветствие настроено. Ниже — как его увидят новички.",
+        module="admin",
+        description="Приветствие задано",
+    ),
+    TextDef(
+        key="admin_welcome_default",
+        default="Своё приветствие не задано, используется стандартное.",
+        module="admin",
+        description="Приветствие не задано",
+    ),
+    TextDef(
+        key="admin_welcome_prompt",
+        default=(
+            "Пришлите сообщение, которое станет приветствием.\n\n"
+            "Можно с картинкой, форматированием и премиум-эмодзи. "
+            "Плейсхолдеры подставятся при отправке.\n\nОтменить — /cancel"
+        ),
+        module="admin",
+        description="Запрос нового приветствия",
+    ),
+    TextDef(
+        key="admin_welcome_invalid",
+        default="Не удалось сохранить приветствие: {reason}",
+        module="admin",
+        description="Сообщение не подходит для приветствия",
+    ),
+    TextDef(
+        key="admin_words_list",
+        default="Запрещено слов: {count}. Нажмите на слово, чтобы убрать его.",
+        module="admin",
+        description="Список запрещённых слов в панели",
+    ),
+    TextDef(
+        key="admin_words_empty",
+        default="Список запрещённых слов пуст.",
+        module="admin",
+        description="Запрещённых слов нет",
+    ),
+    TextDef(
+        key="admin_word_prompt",
+        default=(
+            "Пришлите слово, которое нужно запретить.\n\n"
+            "Можно несколько — каждое с новой строки.\n\nОтменить — /cancel"
+        ),
+        module="admin",
+        description="Запрос запрещённого слова",
+    ),
+    TextDef(
+        key="admin_forwards_list",
+        default="Разрешено источников: {count}. Нажмите, чтобы убрать из списка.",
+        module="admin",
+        description="Белый список пересылок в панели",
+    ),
+    TextDef(
+        key="admin_forwards_empty",
+        default=(
+            "Белый список пуст: пересылки запрещены полностью, "
+            "если правило включено."
+        ),
+        module="admin",
+        description="Белый список пуст",
+    ),
+    TextDef(
+        key="admin_forward_prompt",
+        default=(
+            "Перешлите сюда сообщение из канала, который нужно разрешить.\n\n"
+            "Либо пришлите @username канала или его числовой идентификатор.\n\n"
+            "Отменить — /cancel"
+        ),
+        module="admin",
+        description="Запрос источника пересылок",
+    ),
+    TextDef(
+        key="admin_forward_unknown",
+        default=(
+            "Не удалось определить источник. Перешлите сообщение из канала "
+            "или пришлите его @username."
+        ),
+        module="admin",
+        description="Источник не распознан",
+    ),
     # ─── Подписи кнопок ──────────────────────────────────────────────────────
     TextDef(key="admin_btn_modules", default="Модули", module="admin",
             description="Кнопка: модули"),
@@ -117,6 +207,16 @@ TEXTS = [
             description="Кнопка: настройки"),
     TextDef(key="admin_btn_texts", default="Тексты", module="admin",
             description="Кнопка: тексты"),
+    TextDef(key="admin_btn_content", default="Содержимое", module="admin",
+            description="Кнопка: приветствие, слова, пересылки"),
+    TextDef(key="admin_btn_welcome", default="Приветствие", module="admin",
+            description="Кнопка: приветствие"),
+    TextDef(key="admin_btn_words", default="Запрещённые слова", module="admin",
+            description="Кнопка: запрещённые слова"),
+    TextDef(key="admin_btn_forwards", default="Белый список пересылок", module="admin",
+            description="Кнопка: белый список пересылок"),
+    TextDef(key="admin_btn_add", default="Добавить", module="admin",
+            description="Кнопка: добавить элемент списка"),
     TextDef(key="admin_btn_chats", default="Другой чат", module="admin",
             description="Кнопка: вернуться к списку чатов"),
     TextDef(key="admin_btn_back", default="Назад", module="admin",

@@ -14,7 +14,15 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.registry import ModuleRegistry
-from mod_admin.callbacks import ChatChoice, ModuleAction, Nav, SettingAction, TextAction
+from mod_admin.callbacks import (
+    ChatChoice,
+    ListAction,
+    ModuleAction,
+    Nav,
+    SettingAction,
+    TextAction,
+    WelcomeAction,
+)
 from settings.defs import SettingDef, SettingsRegistry, module_toggle_key
 from settings.service import SettingsService
 from texts.defs import TextDef, TextRegistry
@@ -23,6 +31,9 @@ from ui.buttons import ButtonSpec, parse_style
 
 #: Сколько элементов показывать на одном экране.
 PAGE_SIZE = 8
+
+#: Предел длины подписи кнопки в Telegram.
+BUTTON_LIMIT = 64
 
 
 @dataclass(slots=True)
@@ -128,6 +139,13 @@ async def root_screen(texts: TextService, chat_id: int, chat_title: str) -> Scre
             ButtonSpec(
                 text=await label(texts, chat_id, "admin_btn_texts"),
                 callback_data=Nav(screen="texts").pack(),
+                style=parse_style("blue"),
+            )
+        ],
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_content"),
+                callback_data=Nav(screen="content").pack(),
                 style=parse_style("blue"),
             )
         ],
@@ -386,3 +404,105 @@ def _value_style(definition: SettingDef, value: Any):
 
 def toggle_key(module: str) -> str:
     return module_toggle_key(module)
+
+
+# ─── Разделы содержимого ─────────────────────────────────────────────────────
+
+
+async def content_screen(texts: TextService, chat_id: int) -> Screen:
+    """Выбор раздела: приветствие, слова, пересылки."""
+    rows = [
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_welcome"),
+                callback_data=WelcomeAction(action="open").pack(),
+                style=parse_style("blue"),
+            )
+        ],
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_words"),
+                callback_data=ListAction(kind="words", action="open").pack(),
+                style=parse_style("blue"),
+            )
+        ],
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_forwards"),
+                callback_data=ListAction(kind="forwards", action="open").pack(),
+                style=parse_style("blue"),
+            )
+        ],
+        [await back_button(texts, chat_id, "root")],
+    ]
+    return Screen(text_key="admin_content", rows=rows)
+
+
+async def welcome_screen(texts: TextService, chat_id: int, configured: bool) -> Screen:
+    """Экран приветствия чата."""
+    rows = [
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_edit"),
+                callback_data=WelcomeAction(action="set").pack(),
+                style=parse_style("blue"),
+            )
+        ]
+    ]
+    if configured:
+        rows.append(
+            [
+                ButtonSpec(
+                    text=await label(texts, chat_id, "admin_btn_reset"),
+                    callback_data=WelcomeAction(action="reset").pack(),
+                    style=parse_style("red"),
+                )
+            ]
+        )
+    rows.append([await back_button(texts, chat_id, "content")])
+
+    return Screen(
+        text_key="admin_welcome_set" if configured else "admin_welcome_default", rows=rows
+    )
+
+
+async def list_screen(
+    texts: TextService,
+    chat_id: int,
+    kind: str,
+    items: list[str],
+    page: int = 0,
+) -> Screen:
+    """Список слов или разрешённых источников с удалением по нажатию."""
+    visible, page, total = paginate(items, page)
+    offset = page * PAGE_SIZE
+
+    rows: list[list[ButtonSpec]] = [
+        [
+            ButtonSpec(
+                text=f"✕ {item}"[:BUTTON_LIMIT],
+                callback_data=ListAction(
+                    kind=kind, action="remove", index=offset + position
+                ).pack(),
+                style=parse_style("red"),
+            )
+        ]
+        for position, item in enumerate(visible)
+    ]
+
+    rows.append(
+        [
+            ButtonSpec(
+                text=await label(texts, chat_id, "admin_btn_add"),
+                callback_data=ListAction(kind=kind, action="add").pack(),
+                style=parse_style("green"),
+            )
+        ]
+    )
+    rows.append([await back_button(texts, chat_id, "content")])
+
+    return Screen(
+        text_key=f"admin_{kind}_list" if items else f"admin_{kind}_empty",
+        values={"items": "\n".join(items) if items else "", "count": str(len(items))},
+        rows=rows,
+    )

@@ -114,7 +114,7 @@ async def on_message(
 # ─── Запрещённые слова ───────────────────────────────────────────────────────
 
 
-@router.message(Command("addword"), *ADMIN_COMMAND)
+@router.message(Command("aw", "addword"), *ADMIN_COMMAND)
 async def cmd_add_word(
     message: Message, command: CommandObject, session: AsyncSession, cache: CacheBackend,
     texts: TextService, sender: Sender,
@@ -133,7 +133,7 @@ async def cmd_add_word(
     )
 
 
-@router.message(Command("delword"), *ADMIN_COMMAND)
+@router.message(Command("dw", "delword"), *ADMIN_COMMAND)
 async def cmd_delete_word(
     message: Message, command: CommandObject, session: AsyncSession, cache: CacheBackend,
     texts: TextService, sender: Sender,
@@ -152,7 +152,7 @@ async def cmd_delete_word(
     )
 
 
-@router.message(Command("words"), *ADMIN_COMMAND)
+@router.message(Command("lw", "words"), *ADMIN_COMMAND)
 async def cmd_words(
     message: Message, session: AsyncSession, texts: TextService, sender: Sender
 ) -> None:
@@ -171,7 +171,7 @@ async def cmd_words(
 # ─── Белый список пересылок ──────────────────────────────────────────────────
 
 
-@router.message(Command("allowforward"), *ADMIN_COMMAND)
+@router.message(Command("af", "allowforward"), *ADMIN_COMMAND)
 async def cmd_allow_forward(
     message: Message, session: AsyncSession, cache: CacheBackend, texts: TextService,
     sender: Sender,
@@ -201,7 +201,7 @@ async def cmd_allow_forward(
     )
 
 
-@router.message(Command("denyforward"), *ADMIN_COMMAND)
+@router.message(Command("df", "denyforward"), *ADMIN_COMMAND)
 async def cmd_deny_forward(
     message: Message, session: AsyncSession, cache: CacheBackend, texts: TextService,
     sender: Sender,
@@ -224,7 +224,7 @@ async def cmd_deny_forward(
     )
 
 
-@router.message(Command("forwards"), *ADMIN_COMMAND)
+@router.message(Command("lf", "forwards"), *ADMIN_COMMAND)
 async def cmd_forwards(
     message: Message, session: AsyncSession, texts: TextService, sender: Sender
 ) -> None:

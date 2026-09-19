@@ -54,3 +54,22 @@ class TextAction(CallbackData, prefix="at"):
     module: str
     key: str
     action: str  # open | edit | reset
+
+
+class WelcomeAction(CallbackData, prefix="awl"):
+    """Действие над приветствием чата."""
+
+    action: str  # open | set | reset
+
+
+class ListAction(CallbackData, prefix="alt"):
+    """Действие над списком: запрещённые слова или белый список пересылок.
+
+    Элемент указывается порядковым номером, а не значением: слово может
+    быть длиннее, чем помещается в кнопку, а идентификатор канала занимает
+    почти половину доступного места.
+    """
+
+    kind: str  # words | forwards
+    action: str  # open | add | remove
+    index: int = -1

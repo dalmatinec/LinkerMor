@@ -62,7 +62,7 @@ async def _reply(
     await sender.reply(message, await texts.render(message.chat.id, key, payload))
 
 
-@router.message(Command("addtrigger", "addtrig"), *ADMIN_COMMAND)
+@router.message(Command("at", "addtrigger", "addtrig"), *ADMIN_COMMAND)
 async def cmd_add_trigger(
     message: Message,
     command: CommandObject,
@@ -103,7 +103,7 @@ async def cmd_add_trigger(
     await _reply(message, texts, sender, "trigger_created", {"trigger": key})
 
 
-@router.message(Command("deltrigger", "deltrig"), *ADMIN_COMMAND)
+@router.message(Command("dt", "deltrigger", "deltrig"), *ADMIN_COMMAND)
 async def cmd_delete_trigger(
     message: Message,
     command: CommandObject,
@@ -125,7 +125,7 @@ async def cmd_delete_trigger(
     )
 
 
-@router.message(Command("triggers"), *ADMIN_COMMAND)
+@router.message(Command("lt", "triggers"), *ADMIN_COMMAND)
 async def cmd_list_triggers(
     message: Message,
     session: AsyncSession,

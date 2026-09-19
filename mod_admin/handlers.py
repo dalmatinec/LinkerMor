@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
+from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,12 +23,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.constants import Role
 from core.errors import PermissionDenied, SettingValidationError
 from core.logging import get_logger
+from cache.backend import CacheBackend
 from core.registry import ModuleRegistry
 from guards.chat_type import InPrivate
 from mod_admin import menu
-from mod_admin.callbacks import ChatChoice, ModuleAction, Nav, SettingAction, TextAction
-from mod_admin.states import AdminPanel
+from mod_admin.callbacks import (
+    ChatChoice,
+    ListAction,
+    ModuleAction,
+    Nav,
+    SettingAction,
+    TextAction,
+    WelcomeAction,
+)
+from mod_admin.states import AdminPanel, ContentEdit
 from mod_chats.repo import ChatRepository, MemberRepository
+from sender.sender import Sender
 from permissions.service import PermissionService
 from settings.defs import SettingsRegistry, module_toggle_key
 from settings.service import SettingsService
@@ -520,3 +531,289 @@ async def cancel(
     chat_id = await _selected_chat(state)
     await state.set_state(AdminPanel.browsing)
     await _show(message, texts, chat_id, menu.Screen(text_key="admin_cancelled"))
+
+
+# ─── Содержимое чата: приветствие, слова, пересылки ──────────────────────────
+
+
+async def _words_of(session: AsyncSession, chat_id: int) -> list[str]:
+    from mod_antispam.repo import WordRepository
+
+    return sorted(await WordRepository(session).list_words(chat_id))
+
+
+async def _forwards_of(session: AsyncSession, chat_id: int) -> list:
+    from mod_antispam.repo import ForwardRepository
+
+    return await ForwardRepository(session).list_all(chat_id)
+
+
+def _forward_labels(sources: list) -> list[str]:
+    return [f"{item.title or item.source_id}" for item in sources]
+
+
+async def _drop_list_cache(cache: CacheBackend, chat_id: int, kind: str) -> None:
+    from cache.keys import ChatEntity, chat_key
+
+    await cache.delete(chat_key(ChatEntity.FILTER_RULES, chat_id, kind))
+
+
+@router.callback_query(Nav.filter(F.screen == "content"), InPrivate())
+async def nav_content(
+    callback: CallbackQuery,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+    await _show(callback, texts, chat_id, await menu.content_screen(texts, chat_id))
+
+
+@router.callback_query(WelcomeAction.filter(F.action == "open"), InPrivate())
+async def open_welcome(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    texts: TextService,
+    settings: SettingsService,
+    permissions: PermissionService,
+    sender: Sender,
+    state: FSMContext,
+) -> None:
+    """Показать приветствие выбранного чата."""
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+
+    from mod_welcome.service import WelcomeService
+
+    welcome = await WelcomeService(session, settings, texts, sender).get(chat_id)
+    await _show(callback, texts, chat_id, await menu.welcome_screen(texts, chat_id,
+                                                                    welcome is not None))
+
+    # Приветствие показывается отдельным сообщением ровно таким, каким его
+    # увидят новички — с оформлением и вложением.
+    if welcome is not None and callback.message is not None:
+        body = EntityText.from_storage(welcome.content.text or "", welcome.content.entities)
+        preview, entities = body.to_telegram()
+        if preview:
+            await callback.message.answer(preview, entities=entities)
+
+
+@router.callback_query(WelcomeAction.filter(F.action == "set"), InPrivate())
+async def ask_welcome(
+    callback: CallbackQuery,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+    await state.set_state(ContentEdit.awaiting_welcome)
+    await _show(callback, texts, chat_id, menu.Screen(text_key="admin_welcome_prompt"))
+
+
+@router.message(ContentEdit.awaiting_welcome, InPrivate())
+async def receive_welcome(
+    message: Message,
+    session: AsyncSession,
+    texts: TextService,
+    settings: SettingsService,
+    permissions: PermissionService,
+    sender: Sender,
+    state: FSMContext,
+) -> None:
+    """Принять сообщение, которое станет приветствием чата."""
+    chat_id = await _require_access(state, permissions, message.from_user.id)
+
+    from mod_triggers.content import UnsupportedContent
+    from mod_welcome.service import WelcomeService
+
+    try:
+        await WelcomeService(session, settings, texts, sender).set_from_message(
+            chat_id, message, message.from_user.id
+        )
+    except UnsupportedContent as exc:
+        await _show(
+            message, texts, chat_id,
+            menu.Screen(text_key="admin_welcome_invalid", values={"reason": str(exc)}),
+        )
+        return
+
+    await state.set_state(AdminPanel.browsing)
+    await _show(message, texts, chat_id, await menu.welcome_screen(texts, chat_id, True))
+
+
+@router.callback_query(WelcomeAction.filter(F.action == "reset"), InPrivate())
+async def reset_welcome(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    texts: TextService,
+    settings: SettingsService,
+    permissions: PermissionService,
+    sender: Sender,
+    state: FSMContext,
+) -> None:
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+
+    from mod_welcome.service import WelcomeService
+
+    await WelcomeService(session, settings, texts, sender).clear(chat_id)
+    await _show(callback, texts, chat_id, await menu.welcome_screen(texts, chat_id, False))
+
+
+@router.callback_query(ListAction.filter(F.action == "open"), InPrivate())
+async def open_list(
+    callback: CallbackQuery,
+    callback_data: ListAction,
+    session: AsyncSession,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    """Показать список слов или разрешённых источников."""
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+
+    items = (
+        await _words_of(session, chat_id)
+        if callback_data.kind == "words"
+        else _forward_labels(await _forwards_of(session, chat_id))
+    )
+    await _show(callback, texts, chat_id,
+                await menu.list_screen(texts, chat_id, callback_data.kind, items))
+
+
+@router.callback_query(ListAction.filter(F.action == "add"), InPrivate())
+async def ask_list_item(
+    callback: CallbackQuery,
+    callback_data: ListAction,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+
+    if callback_data.kind == "words":
+        await state.set_state(ContentEdit.awaiting_word)
+        key = "admin_word_prompt"
+    else:
+        await state.set_state(ContentEdit.awaiting_forward)
+        key = "admin_forward_prompt"
+
+    await _show(callback, texts, chat_id, menu.Screen(text_key=key))
+
+
+@router.callback_query(ListAction.filter(F.action == "remove"), InPrivate())
+async def remove_list_item(
+    callback: CallbackQuery,
+    callback_data: ListAction,
+    session: AsyncSession,
+    cache: CacheBackend,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    """Убрать элемент списка по его номеру."""
+    chat_id = await _require_access(state, permissions, callback.from_user.id)
+
+    if callback_data.kind == "words":
+        from mod_antispam.repo import WordRepository
+
+        words = await _words_of(session, chat_id)
+        if 0 <= callback_data.index < len(words):
+            await WordRepository(session).remove(chat_id, words[callback_data.index])
+            await _drop_list_cache(cache, chat_id, "words")
+        items = await _words_of(session, chat_id)
+    else:
+        from mod_antispam.repo import ForwardRepository
+
+        sources = await _forwards_of(session, chat_id)
+        if 0 <= callback_data.index < len(sources):
+            await ForwardRepository(session).deny(
+                chat_id, sources[callback_data.index].source_id
+            )
+            await _drop_list_cache(cache, chat_id, "forwards")
+        items = _forward_labels(await _forwards_of(session, chat_id))
+
+    await _show(callback, texts, chat_id,
+                await menu.list_screen(texts, chat_id, callback_data.kind, items))
+
+
+@router.message(ContentEdit.awaiting_word, InPrivate(), F.text)
+async def receive_word(
+    message: Message,
+    session: AsyncSession,
+    cache: CacheBackend,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    """Добавить запрещённое слово. Можно прислать несколько строками."""
+    chat_id = await _require_access(state, permissions, message.from_user.id)
+
+    from mod_antispam.repo import WordRepository
+
+    repo = WordRepository(session)
+    for line in (message.text or "").splitlines():
+        word = line.strip().lower()
+        if word:
+            await repo.add(chat_id, word, message.from_user.id)
+
+    await _drop_list_cache(cache, chat_id, "words")
+    await state.set_state(AdminPanel.browsing)
+    await _show(message, texts, chat_id,
+                await menu.list_screen(texts, chat_id, "words", await _words_of(session, chat_id)))
+
+
+@router.message(ContentEdit.awaiting_forward, InPrivate())
+async def receive_forward(
+    message: Message,
+    session: AsyncSession,
+    bot: Bot,
+    cache: CacheBackend,
+    texts: TextService,
+    permissions: PermissionService,
+    state: FSMContext,
+) -> None:
+    """Разрешить источник пересылок.
+
+    Принимается тремя способами: пересланное сюда сообщение, ``@username``
+    канала или числовой идентификатор. Пересылка — самый надёжный: у
+    закрытых каналов публичного имени нет.
+    """
+    chat_id = await _require_access(state, permissions, message.from_user.id)
+
+    from mod_antispam.models import ForwardSource
+    from mod_antispam.repo import ForwardRepository
+    from mod_antispam.rule_forwards import origin_of
+
+    source_type: str | None = None
+    source_id: int | None = None
+    title = ""
+
+    origin = origin_of(message)
+    if origin is not None and origin[1]:
+        source_type, source_id, title = origin
+    else:
+        token = (message.text or "").strip()
+        if token.lstrip("-").isdigit():
+            source_type, source_id, title = ForwardSource.CHANNEL, int(token), token
+        elif token.startswith("@"):
+            try:
+                found = await bot.get_chat(token)
+                source_type = ForwardSource.CHANNEL
+                source_id = found.id
+                title = found.title or token
+            except TelegramAPIError:
+                source_id = None
+
+    if source_id is None or source_type is None:
+        await _show(message, texts, chat_id,
+                    menu.Screen(text_key="admin_forward_unknown"))
+        return
+
+    await ForwardRepository(session).allow(
+        chat_id, source_type, source_id, title, message.from_user.id
+    )
+    await _drop_list_cache(cache, chat_id, "forwards")
+    await state.set_state(AdminPanel.browsing)
+
+    items = _forward_labels(await _forwards_of(session, chat_id))
+    await _show(message, texts, chat_id,
+                await menu.list_screen(texts, chat_id, "forwards", items))

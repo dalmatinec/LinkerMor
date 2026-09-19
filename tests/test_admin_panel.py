@@ -242,3 +242,111 @@ async def test_panel_changes_affect_only_selected_chat(session, settings) -> Non
 
     assert await settings.get(CHAT_A, "moderation.warn_limit") == 5
     assert await settings.get(CHAT_B, "moderation.warn_limit") == 3
+
+
+# ─── Разделы содержимого ─────────────────────────────────────────────────────
+
+
+async def test_content_screen_offers_three_sections(session, texts) -> None:
+    """Приветствие, слова и пересылки настраиваются из лички."""
+    await setup(session)
+
+    screen = await menu.content_screen(texts, CHAT_A)
+
+    labels = [button.text for row in screen.rows[:-1] for button in row]
+    assert labels == ["Приветствие", "Запрещённые слова", "Белый список пересылок"]
+
+
+async def test_welcome_screen_without_welcome_has_no_reset(session, texts) -> None:
+    await setup(session)
+
+    screen = await menu.welcome_screen(texts, CHAT_A, configured=False)
+
+    actions = [button.callback_data for row in screen.rows[:-1] for button in row]
+    assert all("reset" not in action for action in actions)
+
+
+async def test_welcome_screen_with_welcome_offers_reset(session, texts) -> None:
+    await setup(session)
+
+    screen = await menu.welcome_screen(texts, CHAT_A, configured=True)
+
+    actions = [button.callback_data for row in screen.rows[:-1] for button in row]
+    assert any("reset" in action for action in actions)
+
+
+async def test_list_screen_shows_items_and_add_button(session, texts) -> None:
+    await setup(session)
+
+    screen = await menu.list_screen(texts, CHAT_A, "words", ["реклама", "спам"])
+
+    item_labels = [button.text for row in screen.rows[:2] for button in row]
+    assert item_labels == ["✕ реклама", "✕ спам"]
+    assert screen.rows[2][0].text == "Добавить"
+
+
+async def test_empty_list_still_offers_add(session, texts) -> None:
+    await setup(session)
+
+    screen = await menu.list_screen(texts, CHAT_A, "forwards", [])
+
+    assert screen.text_key == "admin_forwards_empty"
+    assert screen.rows[0][0].text == "Добавить"
+
+
+async def test_long_word_label_fits_button_limit(session, texts) -> None:
+    """Слово может быть длиннее, чем помещается в подпись кнопки."""
+    await setup(session)
+
+    screen = await menu.list_screen(texts, CHAT_A, "words", ["я" * 200])
+
+    assert len(screen.rows[0][0].text) <= menu.BUTTON_LIMIT
+
+
+async def test_list_removal_uses_index_not_value(session, texts) -> None:
+    """Значение не поместилось бы в 64 байта callback_data."""
+    from mod_admin.callbacks import ListAction
+
+    await setup(session)
+    screen = await menu.list_screen(texts, CHAT_A, "words", ["слово" * 20])
+
+    parsed = ListAction.unpack(screen.rows[0][0].callback_data)
+    assert parsed.index == 0
+    assert parsed.kind == "words"
+
+
+def test_short_commands_are_registered() -> None:
+    """Короткие команды работают вместе с полными."""
+    import re
+
+    from pathlib import Path
+
+    sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in Path(__file__).resolve().parent.parent.glob("mod_*/handlers.py")
+    )
+    registered = set()
+    for match in re.finditer(r'Command\(([^)]*)\)', sources):
+        registered.update(name.strip().strip('"') for name in match.group(1).split(","))
+
+    expected = {"at", "dt", "lt", "aw", "dw", "lw", "af", "df", "lf", "sw", "rw", "we",
+                "ar", "dr", "lr"}
+    assert expected <= registered
+
+
+def test_short_commands_do_not_collide() -> None:
+    """Две команды с одним именем работали бы непредсказуемо."""
+    import re
+    from collections import Counter
+    from pathlib import Path
+
+    counts: Counter[str] = Counter()
+    for path in Path(__file__).resolve().parent.parent.glob("mod_*/handlers.py"):
+        for match in re.finditer(r'Command\(([^)]*)\)', path.read_text(encoding="utf-8")):
+            for name in match.group(1).split(","):
+                cleaned = name.strip().strip('"')
+                if cleaned:
+                    counts[cleaned] += 1
+
+    duplicates = {name: count for name, count in counts.items() if count > 1}
+    assert not duplicates, f"Команды объявлены дважды: {duplicates}"

@@ -49,7 +49,7 @@ async def on_join(
     await WelcomeService(session, settings, texts, sender).send(event.chat.id, user, event.chat)
 
 
-@router.message(Command("setwelcome"), *ADMIN_COMMAND)
+@router.message(Command("sw", "setwelcome"), *ADMIN_COMMAND)
 async def cmd_set_welcome(
     message: Message,
     session: AsyncSession,
@@ -80,7 +80,7 @@ async def cmd_set_welcome(
     await sender.reply(message, await texts.render(message.chat.id, "welcome_saved", values))
 
 
-@router.message(Command("delwelcome"), *ADMIN_COMMAND)
+@router.message(Command("rw", "delwelcome"), *ADMIN_COMMAND)
 async def cmd_delete_welcome(
     message: Message,
     session: AsyncSession,
@@ -100,7 +100,7 @@ async def cmd_delete_welcome(
     )
 
 
-@router.message(Command("welcome"), *ADMIN_COMMAND)
+@router.message(Command("we", "welcome"), *ADMIN_COMMAND)
 async def cmd_preview_welcome(
     message: Message,
     session: AsyncSession,

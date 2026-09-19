@@ -18,3 +18,14 @@ class AdminPanel(StatesGroup):
     awaiting_setting_value = State()
     #: Бот ждёт новый текст — вместе с форматированием и премиум-эмодзи.
     awaiting_text = State()
+
+
+class ContentEdit(StatesGroup):
+    """Ввод содержимого разделов, которые редактируются сообщением."""
+
+    #: Бот ждёт сообщение, которое станет приветствием.
+    awaiting_welcome = State()
+    #: Бот ждёт запрещённое слово.
+    awaiting_word = State()
+    #: Бот ждёт ссылку, @username или идентификатор источника пересылок.
+    awaiting_forward = State()
