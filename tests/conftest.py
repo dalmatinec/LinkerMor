@@ -78,15 +78,13 @@ async def engine() -> AsyncIterator:
     await engine.dispose()
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def clean_tables(engine) -> AsyncIterator[None]:
-    """Очистка таблиц после каждого теста.
+async def _truncate(engine) -> None:
+    """Очистить таблицы между тестами.
 
-    Автоматическая, потому что часть тестов фиксирует транзакцию (проверка
-    сохранности данных после перезапуска). Без неё такие тесты оставляли бы
-    записи следующим, и результат зависел бы от порядка запуска.
+    Нужно потому, что часть тестов фиксирует транзакцию — например, проверка
+    сохранности данных после перезапуска. Без очистки такие тесты оставляли
+    бы записи следующим, и результат зависел бы от порядка запуска.
     """
-    yield
     factory = async_sessionmaker(bind=engine, class_=AsyncSession)
     async with factory() as cleanup:
         for table in reversed(Base.metadata.sorted_tables):
@@ -101,9 +99,11 @@ async def session(engine) -> AsyncIterator[AsyncSession]:
     async with factory() as session:
         yield session
         await session.rollback()
+    await _truncate(engine)
 
 
 @pytest_asyncio.fixture
-async def session_factory(engine) -> async_sessionmaker[AsyncSession]:
+async def session_factory(engine) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     """Фабрика сессий для тестов, которым нужно несколько подключений."""
-    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    yield async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    await _truncate(engine)

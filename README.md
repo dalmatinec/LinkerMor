@@ -41,6 +41,7 @@ cp .env.example .env      # заполнить
 индексы и `ON CONFLICT`, которых нет в SQLite.
 
 ```bash
+service postgresql start                      # если база ещё не запущена
 createdb linkermor_test                       # один раз
 .venv/bin/python -m pytest                    # тесты
 .venv/bin/alembic revision --autogenerate -m "описание"

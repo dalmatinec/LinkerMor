@@ -26,6 +26,8 @@ from middlewares.chat_context import ChatContextMiddleware
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.error import ErrorMiddleware
 from middlewares.logging import LoggingMiddleware
+from middlewares.services import ServicesMiddleware
+from sender.sender import Sender
 
 log = get_logger(__name__)
 
@@ -76,6 +78,8 @@ def build_app(settings: Settings) -> AppContext:
     redis = Redis.from_url(settings.redis_url, decode_responses=False)
     dispatcher = Dispatcher(storage=RedisStorage(redis=redis))
 
+    sender = Sender(bot)
+
     engine = create_engine(settings)
     session_factory = create_session_factory(engine)
     cache = MemoryCache()
@@ -94,6 +98,9 @@ def build_app(settings: Settings) -> AppContext:
     )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(ChatContextMiddleware())
+    dispatcher.update.outer_middleware(
+        ServicesMiddleware(settings, cache, settings_registry, text_registry, sender)
+    )
 
     registry.attach(dispatcher)
 
@@ -110,6 +117,7 @@ def build_app(settings: Settings) -> AppContext:
     dispatcher["session_factory"] = session_factory
     dispatcher["cache"] = cache
     dispatcher["redis"] = redis
+    dispatcher["sender"] = sender
     dispatcher["registry"] = registry
     dispatcher["settings_registry"] = settings_registry
     dispatcher["text_registry"] = text_registry
