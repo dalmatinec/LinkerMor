@@ -155,5 +155,6 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     from mod_admin.spec import MODULE as admin
     from mod_chats.spec import MODULE as chats
     from mod_moderation.spec import MODULE as moderation
+    from mod_triggers.spec import MODULE as triggers
 
-    return [chats, admin, moderation]
+    return [chats, admin, moderation, triggers]

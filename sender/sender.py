@@ -99,3 +99,49 @@ class Sender:
             reply_to_message_id=message.message_id,
             message_thread_id=message.message_thread_id,
         )
+
+    async def send_media(
+        self,
+        chat_id: int,
+        kind: str,
+        file_id: str,
+        caption: EntityText | None = None,
+        *,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+    ) -> Message | None:
+        """Отправить вложение с подписью.
+
+        Файл отправляется по идентификатору, полученному от Telegram при
+        сохранении: повторная загрузка не нужна.
+        """
+        method = getattr(self._bot, f"send_{kind}", None)
+        if method is None:
+            log.warning("неизвестный тип вложения", extra={"kind": kind})
+            return None
+
+        text, entities = caption.to_telegram() if caption else ("", [])
+        payload: dict = {
+            "chat_id": chat_id,
+            kind: file_id,
+            "reply_markup": reply_markup,
+            "reply_to_message_id": reply_to_message_id,
+            "message_thread_id": message_thread_id,
+        }
+        # У стикеров и кружков подписи не бывает.
+        if text and kind not in {"sticker", "video_note"}:
+            payload["caption"] = text
+            payload["caption_entities"] = entities
+
+        await self._limiter.acquire(chat_id)
+        try:
+            return await method(**payload)
+        except TelegramRetryAfter as exc:
+            log.warning("Telegram требует паузу", extra={"chat_id": chat_id,
+                                                         "retry_after": exc.retry_after})
+            return None
+        except TelegramForbiddenError:
+            log.info("чат недоступен для отправки", extra={"chat_id": chat_id})
+            self._limiter.forget(chat_id)
+            return None

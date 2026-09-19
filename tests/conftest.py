@@ -45,6 +45,7 @@ import os  # noqa: E402
 from collections.abc import AsyncIterator  # noqa: E402
 
 import pytest_asyncio  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
@@ -72,7 +73,11 @@ async def engine() -> AsyncIterator:
     """
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        # Схема пересоздаётся целиком, а не через drop_all: в базе могут
+        # остаться таблицы прежних версий, и удаление по зависимостям
+        # спотыкается о внешние ключи из них.
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()

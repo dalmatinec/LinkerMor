@@ -26,6 +26,7 @@ class ChatEntity(StrEnum):
     SETTINGS = "settings"
     TEXTS = "texts"
     TRIGGERS = "triggers"
+    TRIGGER_COOLDOWN = "trigger_cd"
     ADMINS = "admins"
     BOT_PERMS = "bot_perms"
     RANKS = "ranks"
