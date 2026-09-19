@@ -6,6 +6,7 @@ from typing import Any
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,7 +86,7 @@ async def on_message(
     """Проверить сообщение по правилам чата."""
     user = message.from_user
     if user is None or user.is_bot:
-        return
+        raise SkipHandler
 
     # Администрация по умолчанию не подпадает под фильтры: иначе
     # модератор не смог бы процитировать нарушение при разборе.
@@ -94,7 +95,7 @@ async def on_message(
             message.chat.id, user.id, member=member, is_anonymous=is_anonymous_admin
         )
         if role >= Role.MODERATOR:
-            return
+            raise SkipHandler
 
     ctx = RuleContext(
         chat_id=message.chat.id,
@@ -105,7 +106,8 @@ async def on_message(
     )
     verdict = await ENGINE.check(ctx)
     if verdict is None:
-        return
+        # Нарушения нет: сообщение должно дойти до триггеров и репутации.
+        raise SkipHandler
 
     moderation = ModerationService(session, bot, permissions, settings)
     await apply_verdict(message, verdict, moderation, texts, sender)

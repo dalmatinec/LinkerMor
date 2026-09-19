@@ -293,6 +293,23 @@ class MemberRepository:
         result = (await self._session.execute(stmt)).scalar_one_or_none()
         return result or 0
 
+    async def all_admin_user_ids(self) -> list[int]:
+        """Администраторы всех действующих чатов без повторов.
+
+        Область видимости здесь намеренно шире одного чата: метод нужен
+        владельцу бота для рассылки и больше нигде не используется.
+        """
+        stmt = (
+            select(ChatMember.user_id)
+            .join(Chat, Chat.chat_id == ChatMember.chat_id)
+            .where(
+                ChatMember.role >= int(Role.CHAT_ADMIN),
+                Chat.status == ChatStatus.ACTIVE,
+            )
+            .distinct()
+        )
+        return list((await self._session.execute(stmt)).scalars())
+
     async def move_to_chat(self, old_chat_id: int, new_chat_id: int) -> int:
         """Перенести участников при переезде группы в супергруппу."""
         stmt = (

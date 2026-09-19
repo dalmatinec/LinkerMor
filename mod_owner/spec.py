@@ -38,6 +38,43 @@ TEXTS = [
         description="Список подключённых чатов",
     ),
     TextDef(
+        key="owner_broadcast_prompt",
+        default=(
+            "Пришлите сообщение для рассылки администраторам чатов.\n\n"
+            "Форматирование и премиум-эмодзи сохранятся.\n\nОтменить — /cancel"
+        ),
+        module="owner",
+        description="Запрос сообщения для рассылки",
+    ),
+    TextDef(
+        key="owner_broadcast_confirm",
+        default="Разослать это сообщение? Получателей: {count}",
+        module="owner",
+        description="Подтверждение рассылки",
+    ),
+    TextDef(
+        key="owner_broadcast_empty",
+        default="Пустое сообщение разослать нельзя.",
+        module="owner",
+        description="Сообщение без текста",
+    ),
+    TextDef(
+        key="owner_broadcast_done",
+        default="Рассылка выполнена. Доставлено: {count}, не доставлено: {reason}",
+        module="owner",
+        description="Итог рассылки",
+    ),
+    TextDef(
+        key="owner_broadcast_cancelled",
+        default="Рассылка отменена.",
+        module="owner",
+        description="Рассылка отменена",
+    ),
+    TextDef(key="owner_broadcast_btn_send", default="Разослать", module="owner",
+            description="Кнопка: подтвердить рассылку"),
+    TextDef(key="owner_broadcast_btn_cancel", default="Отмена", module="owner",
+            description="Кнопка: отменить рассылку"),
+    TextDef(
         key="owner_chats_empty",
         default="Бот пока не добавлен ни в один чат.",
         module="owner",

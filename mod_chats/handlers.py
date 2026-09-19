@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Router
 from aiogram.filters import ChatMemberUpdatedFilter
 from aiogram.types import ChatMemberUpdated, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,25 +81,3 @@ async def on_chat_migrated(message: Message, session: AsyncSession, cache: Cache
     )
     # Кеш под старым chat_id больше не нужен и может ввести в заблуждение.
     await cache.delete_pattern(chat_prefix(message.chat.id))
-
-
-@router.message(InGroup(), F.text | F.caption)
-async def on_group_message(
-    message: Message,
-    session: AsyncSession,
-    **_: object,
-) -> None:
-    """Учёт активности участника.
-
-    Счётчик нужен рангам: метрика ранга настраивается для каждого чата и
-    может считаться по сообщениям. Инкремент атомарный.
-    """
-    user = message.from_user
-    if user is None or user.is_bot:
-        return
-
-    from mod_chats.repo import MemberRepository
-
-    members = MemberRepository(session)
-    await members.ensure_exists(message.chat.id, user.id)
-    await members.increment_messages(message.chat.id, user.id)

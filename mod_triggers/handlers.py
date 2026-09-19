@@ -12,6 +12,7 @@ from typing import Any
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -165,12 +166,13 @@ async def on_message(
 ) -> None:
     """Ответить, если сообщение совпало с ключевым словом."""
     if message.from_user is None or message.from_user.is_bot:
-        return
+        raise SkipHandler
 
     body = message.text or message.caption or ""
     trigger = await TriggerService(session, cache).find(message.chat.id, body)
     if trigger is None:
-        return
+        # Совпадения нет: сообщение идёт дальше к репутации и рангам.
+        raise SkipHandler
 
     kind, response, file_id, keyboard = TriggerService.response_of(trigger)
 

@@ -22,6 +22,7 @@ from core.registry import ModuleRegistry, build_registry
 from settings.defs import SettingsRegistry, build_registry as build_settings_registry
 from texts.defs import TextRegistry, build_registry as build_texts_registry
 from database.engine import create_engine, create_session_factory
+from middlewares.activity import ActivityMiddleware
 from middlewares.chat_context import ChatContextMiddleware
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.error import ErrorMiddleware
@@ -116,6 +117,7 @@ def build_app(settings: Settings) -> AppContext:
     )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(ChatContextMiddleware())
+    dispatcher.update.outer_middleware(ActivityMiddleware())
     dispatcher.update.outer_middleware(
         ServicesMiddleware(settings, cache, settings_registry, text_registry, sender)
     )
@@ -193,6 +195,7 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     from mod_moderation.spec import MODULE as moderation
     from mod_owner.spec import MODULE as owner
     from mod_ranks.spec import MODULE as ranks
+    from mod_stats.spec import MODULE as stats
     from mod_reputation.spec import MODULE as reputation
     from mod_triggers.spec import MODULE as triggers
     from mod_welcome.spec import MODULE as welcome
@@ -208,4 +211,5 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
         triggers,
         reputation,
         ranks,
+        stats,
     ]

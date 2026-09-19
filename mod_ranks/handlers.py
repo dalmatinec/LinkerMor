@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 from sqlalchemy.exc import IntegrityError
@@ -159,21 +160,26 @@ async def on_message(
     texts: TextService,
     sender: Sender,
     member: Any = None,
+    messages_total: int | None = None,
 ) -> None:
     """Проверить ранг после сообщения, если он считается по активности."""
     user = message.from_user
-    if user is None or user.is_bot or member is None:
-        return
+    if user is None or user.is_bot:
+        raise SkipHandler
 
     metric = str(await settings.get(message.chat.id, "ranks.metric"))
     if metric == "reputation":
         # Сообщения на такой ранг не влияют: проверять нечего.
-        return
+        raise SkipHandler
+
+    # Счётчик уже обновлён middleware активности: повторный запрос не нужен.
+    if messages_total is not None and member is not None:
+        member.messages_total = messages_total
 
     service = RankService(session, cache, settings)
     change = await service.sync(message.chat.id, user.id, member)
     if change is None or not await settings.get(message.chat.id, "ranks.notify"):
-        return
+        raise SkipHandler
 
     values: dict[str, Any] = {
         "old_rank": change.old_name,

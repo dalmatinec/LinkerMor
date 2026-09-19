@@ -6,6 +6,7 @@ from typing import Any
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,16 +76,16 @@ async def on_reputation_word(
 ) -> None:
     """Изменить репутацию ответом со словом благодарности."""
     if not await settings.get(message.chat.id, "reputation.enabled"):
-        return
+        raise SkipHandler
 
     author = message.from_user
     target = message.reply_to_message.from_user
     if author is None or target is None or target.is_bot:
-        return
+        raise SkipHandler
 
     first_word = (message.text or "").strip().lower().split()[:1]
     if not first_word:
-        return
+        raise SkipHandler
 
     plus = _words(str(await settings.get(message.chat.id, "reputation.words_plus")))
     minus = _words(str(await settings.get(message.chat.id, "reputation.words_minus")))
@@ -94,7 +95,8 @@ async def on_reputation_word(
     elif first_word[0] in minus:
         delta = -1
     else:
-        return
+        # Обычное сообщение: пусть его увидят остальные модули.
+        raise SkipHandler
 
     target_name = " ".join(filter(None, (target.first_name, target.last_name))) or str(target.id)
     result = await ReputationService(session, settings).change(
