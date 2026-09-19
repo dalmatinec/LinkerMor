@@ -162,7 +162,9 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     from mod_captcha.spec import MODULE as captcha
     from mod_chats.spec import MODULE as chats
     from mod_moderation.spec import MODULE as moderation
+    from mod_ranks.spec import MODULE as ranks
+    from mod_reputation.spec import MODULE as reputation
     from mod_triggers.spec import MODULE as triggers
     from mod_welcome.spec import MODULE as welcome
 
-    return [chats, captcha, welcome, admin, moderation, triggers]
+    return [chats, captcha, welcome, admin, moderation, triggers, reputation, ranks]
