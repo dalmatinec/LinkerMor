@@ -27,11 +27,12 @@ class ChatEntity(StrEnum):
     TEXTS = "texts"
     TRIGGERS = "triggers"
     TRIGGER_COOLDOWN = "trigger_cd"
+    FLOOD = "flood"
+    FORWARD_WHITELIST = "forward_wl"
     ADMINS = "admins"
     BOT_PERMS = "bot_perms"
     RANKS = "ranks"
     FILTER_RULES = "filter_rules"
-    FORWARD_WHITELIST = "forward_wl"
     KEYBOARDS = "keyboards"
     MODULES = "modules"
 

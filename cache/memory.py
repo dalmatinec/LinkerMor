@@ -53,6 +53,21 @@ class MemoryCache:
     async def clear(self) -> None:
         self._data.clear()
 
+    async def incr(self, key: str, ttl: int) -> int:
+        """Увеличить счётчик. Срок жизни ставится при первом увеличении.
+
+        Операция не содержит ожиданий, поэтому в однопроцессном
+        приложении выполняется целиком и события не теряются.
+        """
+        entry = self._data.get(key)
+        now = time.monotonic()
+        if entry is None or not entry.is_alive(now):
+            self._data[key] = _Entry(value=1, expires_at=now + ttl)
+            return 1
+
+        entry.value = int(entry.value) + 1
+        return entry.value
+
     def purge_expired(self) -> int:
         """Убрать истёкшие записи. Вызывается фоновой задачей очистки."""
         now = time.monotonic()
