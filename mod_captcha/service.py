@@ -77,14 +77,19 @@ class CaptchaService:
 
     # ─── Запуск ──────────────────────────────────────────────────────────────
 
-    async def start(self, chat_id: int, user: User) -> StartResult:
+    async def start(self, chat_id: int, user: User, *, force: bool = False) -> StartResult:
         """Начать проверку участника.
+
+        Args:
+            force: Проверять, даже если в чате она обычно выключена.
+                Так поступает защита от налёта: во время всплеска входов
+                проверка нужна независимо от обычных настроек.
 
         Проверка бессмысленна без права ограничивать участников: человек
         мог бы просто писать дальше. В этом случае она пропускается, а не
         имитируется.
         """
-        if not await self._settings.get(chat_id, "captcha.enabled"):
+        if not force and not await self._settings.get(chat_id, "captcha.enabled"):
             return StartResult(started=False)
 
         if not await self._permissions.bot_can(chat_id, BotPermission.RESTRICT_MEMBERS):

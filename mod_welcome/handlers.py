@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from aiogram import Router
 from aiogram.filters import JOIN_TRANSITION, ChatMemberUpdatedFilter, Command
 from aiogram.types import ChatMemberUpdated, Message
@@ -29,6 +31,7 @@ ADMIN_COMMAND = (InGroup(), ModuleEnabled("welcome"), HasRole(Role.CHAT_ADMIN))
 async def on_join(
     event: ChatMemberUpdated,
     session: AsyncSession,
+    cache: Any,
     settings: SettingsService,
     texts: TextService,
     sender: Sender,
@@ -40,6 +43,14 @@ async def on_join(
     получил бы приветствие, не имея возможности ответить.
     """
     if await settings.get(event.chat.id, "captcha.enabled"):
+        return
+
+    # Во время налёта здороваться не с кем: входящих проверяют или
+    # выставляют.
+    from cache.backend import CacheBackend  # noqa: F401 — только для типа
+    from mod_antiraid.service import RaidService
+
+    if await RaidService(session, cache, settings).is_active(event.chat.id):
         return
 
     user = event.new_chat_member.user

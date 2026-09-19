@@ -7,6 +7,7 @@ from typing import Any
 from aiogram import Bot, Router
 from aiogram.filters import JOIN_TRANSITION, ChatMemberUpdatedFilter
 from aiogram.types import CallbackQuery, ChatMemberUpdated
+from cache.backend import CacheBackend
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import get_logger
@@ -15,6 +16,7 @@ from guards.module_enabled import ModuleEnabled
 from mod_captcha.callbacks import CaptchaAnswer
 from mod_captcha.challenges import Challenge
 from mod_captcha.models import CaptchaKind
+from mod_antiraid.service import RaidService
 from mod_captcha.service import CaptchaService, Verdict
 from mod_moderation.service import ModerationService
 from mod_welcome.service import WelcomeService
@@ -78,6 +80,7 @@ async def on_join(
     event: ChatMemberUpdated,
     session: AsyncSession,
     bot: Bot,
+    cache: CacheBackend,
     settings: SettingsService,
     permissions: PermissionService,
     texts: TextService,
@@ -88,8 +91,11 @@ async def on_join(
     if user.is_bot:
         return
 
+    # Во время налёта проверка обязательна, даже если обычно выключена.
+    during_raid = await RaidService(session, cache, settings).is_active(event.chat.id)
+
     service = _service(session, bot, settings, permissions)
-    result = await service.start(event.chat.id, user)
+    result = await service.start(event.chat.id, user, force=during_raid)
     if not result.started or result.challenge is None:
         return
 

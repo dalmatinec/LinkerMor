@@ -189,6 +189,7 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     Порядок в списке значения не имеет: очередь определяет ``priority``.
     """
     from mod_admin.spec import MODULE as admin
+    from mod_antiraid.spec import MODULE as antiraid
     from mod_antispam.spec import MODULE as antispam
     from mod_captcha.spec import MODULE as captcha
     from mod_chats.spec import MODULE as chats
@@ -203,6 +204,7 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     return [
         chats,
         owner,
+        antiraid,
         captcha,
         welcome,
         admin,

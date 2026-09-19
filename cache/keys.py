@@ -28,6 +28,8 @@ class ChatEntity(StrEnum):
     TRIGGERS = "triggers"
     TRIGGER_COOLDOWN = "trigger_cd"
     FLOOD = "flood"
+    RAID = "raid"
+    RAID_COUNTER = "raid_count"
     FORWARD_WHITELIST = "forward_wl"
     ADMINS = "admins"
     BOT_PERMS = "bot_perms"
