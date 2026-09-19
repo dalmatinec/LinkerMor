@@ -1,4 +1,9 @@
-"""Перехват ошибок: пользователь никогда не видит traceback (ТЗ §28)."""
+"""Перехват ошибок: пользователь никогда не видит traceback (ТЗ §28).
+
+Сообщение об ошибке берётся из системы Custom Texts по ключу, объявленному
+самой ошибкой, поэтому администратор чата может переформулировать любое из
+них под свой чат.
+"""
 
 from __future__ import annotations
 
@@ -8,19 +13,29 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 from aiogram.types import CallbackQuery, Message, TelegramObject
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from cache.backend import CacheBackend
 from core.errors import LinkerMorError
 from core.logging import get_logger
+from texts.defs import TextRegistry
+from texts.service import TextService
 
 log = get_logger(__name__)
-
-#: Временная заглушка на время Phase 1. С появлением TextService (Phase 3)
-#: эти строки заменяются обращением к системе Custom Texts по ``text_key``.
-_FALLBACK_TEXT = "Не удалось выполнить действие. Попробуйте позже."
 
 
 class ErrorMiddleware(BaseMiddleware):
     """Ловит исключения хендлеров и отвечает человеку понятным текстом."""
+
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        cache: CacheBackend,
+        text_registry: TextRegistry,
+    ) -> None:
+        self._session_factory = session_factory
+        self._cache = cache
+        self._registry = text_registry
 
     async def __call__(
         self,
@@ -31,30 +46,53 @@ class ErrorMiddleware(BaseMiddleware):
         try:
             return await handler(event, data)
         except LinkerMorError as exc:
-            # Ожидаемая ошибка предметной области: логируем без traceback.
+            # Ожидаемая ошибка предметной области: traceback не нужен.
             log.warning(
                 "действие отклонено",
                 extra={"text_key": exc.text_key, "reason": str(exc), **exc.context},
             )
-            await _reply(event, _FALLBACK_TEXT)
+            await self._reply(event, exc.text_key, exc.context)
         except TelegramRetryAfter as exc:
+            # Отвечать нечем: лимит распространяется и на сообщение об ошибке.
             log.warning("превышен лимит Telegram", extra={"retry_after": exc.retry_after})
-        except TelegramAPIError as exc:
-            log.error("ошибка Telegram API", extra={"method": type(exc).__name__}, exc_info=True)
-            await _reply(event, _FALLBACK_TEXT)
+        except TelegramAPIError:
+            log.error("ошибка Telegram API", exc_info=True)
+            await self._reply(event, "error_unknown", {})
         except Exception:
             log.exception("необработанное исключение")
-            await _reply(event, _FALLBACK_TEXT)
+            await self._reply(event, "error_unknown", {})
         return None
 
+    async def _reply(self, event: TelegramObject, text_key: str, values: dict[str, Any]) -> None:
+        """Сообщить пользователю об ошибке, не поднимая новую ошибку.
 
-async def _reply(event: TelegramObject, text: str) -> None:
-    """Сообщить пользователю об ошибке, не поднимая новую ошибку."""
-    inner = event.event if hasattr(event, "event") else event
-    try:
-        if isinstance(inner, CallbackQuery):
-            await inner.answer(text, show_alert=True)
-        elif isinstance(inner, Message):
-            await inner.reply(text)
-    except TelegramAPIError:
-        log.debug("не удалось доставить сообщение об ошибке")
+        Транзакция обработки уже откачена, поэтому текст читается в
+        отдельной короткоживущей сессии.
+        """
+        inner = event.event if hasattr(event, "event") else event
+        target = inner if isinstance(inner, (Message, CallbackQuery)) else None
+        if target is None:
+            return
+
+        try:
+            chat = getattr(target, "chat", None) or getattr(
+                getattr(target, "message", None), "chat", None
+            )
+            async with self._session_factory() as session:
+                service = TextService(session, self._cache, self._registry)
+                rendered = await service.render(
+                    chat.id if chat is not None else None,
+                    text_key,
+                    {k: str(v) for k, v in values.items()},
+                )
+            text, entities = rendered.to_telegram()
+
+            if isinstance(target, CallbackQuery):
+                await target.answer(text[:200], show_alert=True)
+            else:
+                await target.reply(text, entities=entities)
+        except TelegramAPIError:
+            log.debug("не удалось доставить сообщение об ошибке")
+        except Exception:
+            # Ошибка при выводе ошибки не должна ронять обработку апдейта.
+            log.exception("сбой при формировании сообщения об ошибке")

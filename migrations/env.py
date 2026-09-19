@@ -27,8 +27,10 @@ if config.config_file_name is not None:
 # Вызов ENABLED_MODULES импортирует spec каждого модуля, а те импортируют
 # свои модели — так Base.metadata наполняется без ручного списка импортов.
 from core.bootstrap import ENABLED_MODULES  # noqa: E402
+from database.base import import_all_models  # noqa: E402
 
 ENABLED_MODULES()
+import_all_models()
 
 target_metadata = Base.metadata
 

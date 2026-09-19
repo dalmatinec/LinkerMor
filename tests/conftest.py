@@ -49,7 +49,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool  # noqa: E402
 
 import mod_chats.models  # noqa: E402,F401 — наполняет Base.metadata
-from database.base import Base  # noqa: E402
+from database.base import Base, import_all_models  # noqa: E402
+
+import_all_models()
 
 #: Тесты работают на настоящем PostgreSQL: проект опирается на JSONB,
 #: частичные индексы и ON CONFLICT, которых нет в SQLite.

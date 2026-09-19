@@ -50,3 +50,13 @@ class ChatScopedMixin:
     """
 
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+
+
+def import_all_models() -> None:
+    """Импортировать модели, не принадлежащие ни одному модулю.
+
+    Модели модулей попадают в метаданные через их ``spec``. Настройки и
+    тексты — часть ядра, поэтому импортируются здесь.
+    """
+    import settings.models  # noqa: F401
+    import texts.models  # noqa: F401

@@ -19,6 +19,8 @@ from cache.memory import MemoryCache
 from core.config import Settings
 from core.logging import get_logger
 from core.registry import ModuleRegistry, build_registry
+from settings.defs import SettingsRegistry, build_registry as build_settings_registry
+from texts.defs import TextRegistry, build_registry as build_texts_registry
 from database.engine import create_engine, create_session_factory
 from middlewares.chat_context import ChatContextMiddleware
 from middlewares.db_session import DbSessionMiddleware
@@ -52,6 +54,8 @@ class AppContext:
     redis: Redis
     cache: MemoryCache
     registry: ModuleRegistry
+    settings_registry: SettingsRegistry
+    text_registry: TextRegistry
 
     async def shutdown(self) -> None:
         """Корректно освободить ресурсы. Порядок важен."""
@@ -76,22 +80,39 @@ def build_app(settings: Settings) -> AppContext:
     session_factory = create_session_factory(engine)
     cache = MemoryCache()
 
+    specs = ENABLED_MODULES()
+    registry = build_registry(specs)
+    settings_registry = build_settings_registry(specs)
+    text_registry = build_texts_registry(specs)
+
     # Порядок важен: контекст логирования → перехват ошибок → сессия базы
     # → контекст чата. Упавший хендлер логируется уже с correlation id, а
     # транзакция закрывается до того, как ошибка покинет обработку.
     dispatcher.update.outer_middleware(LoggingMiddleware())
-    dispatcher.update.outer_middleware(ErrorMiddleware())
+    dispatcher.update.outer_middleware(
+        ErrorMiddleware(session_factory, cache, text_registry)
+    )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(ChatContextMiddleware())
 
-    registry = build_registry(ENABLED_MODULES())
     registry.attach(dispatcher)
+
+    log.info(
+        "реестры собраны",
+        extra={
+            "modules": len(registry.specs),
+            "settings": len(settings_registry),
+            "texts": len(text_registry),
+        },
+    )
 
     dispatcher["settings"] = settings
     dispatcher["session_factory"] = session_factory
     dispatcher["cache"] = cache
     dispatcher["redis"] = redis
     dispatcher["registry"] = registry
+    dispatcher["settings_registry"] = settings_registry
+    dispatcher["text_registry"] = text_registry
 
     return AppContext(
         settings=settings,
@@ -102,6 +123,8 @@ def build_app(settings: Settings) -> AppContext:
         redis=redis,
         cache=cache,
         registry=registry,
+        settings_registry=settings_registry,
+        text_registry=text_registry,
     )
 
 
