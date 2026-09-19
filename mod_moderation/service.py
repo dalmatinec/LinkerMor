@@ -68,15 +68,20 @@ class ModerationService:
     async def ban(
         self,
         chat_id: int,
-        actor_id: int,
+        actor_id: int | None,
         target: Target,
         reason: str | None = None,
         duration: timedelta | None = None,
         source: PunishmentSource = PunishmentSource.MANUAL,
     ) -> ModerationResult:
-        """Заблокировать участника или канал-отправитель."""
+        """Заблокировать участника или канал-отправитель.
+
+        ``actor_id=None`` означает системное действие — капчу или фильтр.
+        Проверка «кто над кем» тогда не выполняется: инициатора-человека
+        нет, а права бота проверяются в любом случае.
+        """
         await self._permissions.require_bot_permission(chat_id, BotPermission.RESTRICT_MEMBERS)
-        if not target.is_chat:
+        if actor_id is not None and not target.is_chat:
             await self._permissions.require_can_act_on(chat_id, actor_id, target.id)
 
         until = datetime.now(UTC) + duration if duration else None
@@ -120,15 +125,19 @@ class ModerationService:
     async def mute(
         self,
         chat_id: int,
-        actor_id: int,
+        actor_id: int | None,
         target: Target,
         reason: str | None = None,
         duration: timedelta | None = None,
         source: PunishmentSource = PunishmentSource.MANUAL,
     ) -> ModerationResult:
-        """Запретить участнику писать в чат."""
+        """Запретить участнику писать в чат.
+
+        ``actor_id=None`` — системное действие капчи или фильтра.
+        """
         await self._permissions.require_bot_permission(chat_id, BotPermission.RESTRICT_MEMBERS)
-        await self._permissions.require_can_act_on(chat_id, actor_id, target.id)
+        if actor_id is not None:
+            await self._permissions.require_can_act_on(chat_id, actor_id, target.id)
 
         until = datetime.now(UTC) + duration if duration else None
         if not await self._actions.mute(chat_id, target.id, until=until):
@@ -167,17 +176,19 @@ class ModerationService:
     async def kick(
         self,
         chat_id: int,
-        actor_id: int,
+        actor_id: int | None,
         target: Target,
         reason: str | None = None,
         source: PunishmentSource = PunishmentSource.MANUAL,
     ) -> ModerationResult:
         """Удалить из чата с правом вернуться.
 
-        Команды для этого нет: действие применяется капчей и фильтрами.
+        Команды для этого нет: действие применяется капчей и фильтрами,
+        поэтому ``actor_id`` у него обычно отсутствует.
         """
         await self._permissions.require_bot_permission(chat_id, BotPermission.RESTRICT_MEMBERS)
-        await self._permissions.require_can_act_on(chat_id, actor_id, target.id)
+        if actor_id is not None:
+            await self._permissions.require_can_act_on(chat_id, actor_id, target.id)
 
         if not await self._actions.kick(chat_id, target.id):
             return ModerationResult("moderation_failed", self._values(target, reason),

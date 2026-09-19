@@ -14,7 +14,12 @@ from __future__ import annotations
 import asyncio
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramBadRequest,
+    TelegramForbiddenError,
+    TelegramRetryAfter,
+)
 from aiogram.types import InlineKeyboardMarkup, Message
 
 from core.logging import get_logger
@@ -145,3 +150,19 @@ class Sender:
             log.info("чат недоступен для отправки", extra={"chat_id": chat_id})
             self._limiter.forget(chat_id)
             return None
+
+    async def delete_message(self, chat_id: int, message_id: int) -> bool:
+        """Удалить сообщение.
+
+        Удаление не ограничивается по частоте: лимиты Telegram касаются
+        отправки. Отсутствие сообщения ошибкой не считается — его могли
+        удалить раньше.
+        """
+        try:
+            await self._bot.delete_message(chat_id=chat_id, message_id=message_id)
+            return True
+        except TelegramBadRequest:
+            return False
+        except TelegramAPIError:
+            log.debug("не удалось удалить сообщение", extra={"chat_id": chat_id})
+            return False

@@ -28,6 +28,7 @@ from middlewares.error import ErrorMiddleware
 from middlewares.logging import LoggingMiddleware
 from middlewares.services import ServicesMiddleware
 from sender.sender import Sender
+from tasks.captcha_cleanup import CAPTCHA_CLEANUP_INTERVAL, make_captcha_cleanup_task
 from tasks.expirations import EXPIRATION_INTERVAL, make_expiration_task
 from tasks.scheduler import Scheduler
 
@@ -125,6 +126,11 @@ def build_app(settings: Settings) -> AppContext:
     scheduler.add(
         "expirations", EXPIRATION_INTERVAL, make_expiration_task(session_factory)
     )
+    scheduler.add(
+        "captcha_cleanup",
+        CAPTCHA_CLEANUP_INTERVAL,
+        make_captcha_cleanup_task(session_factory, bot, cache, settings, settings_registry),
+    )
 
     dispatcher["sender"] = sender
     dispatcher["registry"] = registry
@@ -153,8 +159,10 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     Порядок в списке значения не имеет: очередь определяет ``priority``.
     """
     from mod_admin.spec import MODULE as admin
+    from mod_captcha.spec import MODULE as captcha
     from mod_chats.spec import MODULE as chats
     from mod_moderation.spec import MODULE as moderation
     from mod_triggers.spec import MODULE as triggers
+    from mod_welcome.spec import MODULE as welcome
 
-    return [chats, admin, moderation, triggers]
+    return [chats, captcha, welcome, admin, moderation, triggers]

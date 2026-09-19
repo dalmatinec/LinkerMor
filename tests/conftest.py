@@ -49,9 +49,12 @@ from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import mod_chats.models  # noqa: E402,F401 — наполняет Base.metadata
+from core.bootstrap import ENABLED_MODULES  # noqa: E402
 from database.base import Base, import_all_models  # noqa: E402
 
+# Схема тестовой базы строится из Base.metadata, поэтому модели всех
+# модулей должны быть импортированы заранее — ровно как в миграциях.
+ENABLED_MODULES()
 import_all_models()
 
 #: Тесты работают на настоящем PostgreSQL: проект опирается на JSONB,
