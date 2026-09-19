@@ -27,9 +27,14 @@ from middlewares.db_session import DbSessionMiddleware
 from middlewares.error import ErrorMiddleware
 from middlewares.logging import LoggingMiddleware
 from middlewares.services import ServicesMiddleware
+from core.backup import BackupService
+from core.health import HealthService
+from sender.notifier import OwnerNotifier
 from sender.sender import Sender
 from tasks.captcha_cleanup import CAPTCHA_CLEANUP_INTERVAL, make_captcha_cleanup_task
+from tasks.backup import make_backup_task
 from tasks.expirations import EXPIRATION_INTERVAL, make_expiration_task
+from tasks.health import HEALTH_INTERVAL, make_health_task
 from tasks.scheduler import Scheduler
 
 log = get_logger(__name__)
@@ -59,6 +64,8 @@ class AppContext:
     redis: Redis
     cache: MemoryCache
     scheduler: Scheduler
+    notifier: OwnerNotifier
+    health: HealthService
     registry: ModuleRegistry
     settings_registry: SettingsRegistry
     text_registry: TextRegistry
@@ -89,6 +96,9 @@ def build_app(settings: Settings) -> AppContext:
     session_factory = create_session_factory(engine)
     cache = MemoryCache()
 
+    notifier = OwnerNotifier(bot, settings.owner_ids, cache)
+    health = HealthService(engine, redis, bot)
+
     specs = ENABLED_MODULES()
     registry = build_registry(specs)
     settings_registry = build_settings_registry(specs)
@@ -99,7 +109,10 @@ def build_app(settings: Settings) -> AppContext:
     # транзакция закрывается до того, как ошибка покинет обработку.
     dispatcher.update.outer_middleware(LoggingMiddleware())
     dispatcher.update.outer_middleware(
-        ErrorMiddleware(session_factory, cache, text_registry)
+        ErrorMiddleware(
+            session_factory, cache, text_registry,
+            notifier if settings.error_notify else None,
+        )
     )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(ChatContextMiddleware())
@@ -127,12 +140,25 @@ def build_app(settings: Settings) -> AppContext:
         "expirations", EXPIRATION_INTERVAL, make_expiration_task(session_factory)
     )
     scheduler.add(
+        "health",
+        HEALTH_INTERVAL,
+        make_health_task(health, notifier, settings.watchdog_url),
+    )
+    if settings.backup_enabled:
+        scheduler.add(
+            "backup",
+            settings.backup_interval_hours * 3600,
+            make_backup_task(BackupService(settings, bot), settings, notifier),
+        )
+    scheduler.add(
         "captcha_cleanup",
         CAPTCHA_CLEANUP_INTERVAL,
         make_captcha_cleanup_task(session_factory, bot, cache, settings, settings_registry),
     )
 
     dispatcher["sender"] = sender
+    dispatcher["health"] = health
+    dispatcher["notifier"] = notifier
     dispatcher["registry"] = registry
     dispatcher["settings_registry"] = settings_registry
     dispatcher["text_registry"] = text_registry
@@ -146,6 +172,8 @@ def build_app(settings: Settings) -> AppContext:
         redis=redis,
         cache=cache,
         scheduler=scheduler,
+        notifier=notifier,
+        health=health,
         registry=registry,
         settings_registry=settings_registry,
         text_registry=text_registry,
@@ -163,6 +191,7 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     from mod_captcha.spec import MODULE as captcha
     from mod_chats.spec import MODULE as chats
     from mod_moderation.spec import MODULE as moderation
+    from mod_owner.spec import MODULE as owner
     from mod_ranks.spec import MODULE as ranks
     from mod_reputation.spec import MODULE as reputation
     from mod_triggers.spec import MODULE as triggers
@@ -170,6 +199,7 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
 
     return [
         chats,
+        owner,
         captcha,
         welcome,
         admin,

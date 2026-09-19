@@ -50,6 +50,18 @@ class Settings(BaseSettings):
     redis_db: int = Field(default=0, ge=0, alias="REDIS_DB")
     redis_password: SecretStr = Field(default=SecretStr(""), alias="REDIS_PASSWORD")
 
+    # ─── Надёжность ──────────────────────────────────────────────────────────
+    backup_enabled: bool = Field(default=True, alias="BACKUP_ENABLED")
+    backup_interval_hours: int = Field(default=24, ge=1, le=168, alias="BACKUP_INTERVAL_HOURS")
+    backup_keep: int = Field(default=7, ge=1, le=100, alias="BACKUP_KEEP")
+    backup_dir: str = Field(default="backups", alias="BACKUP_DIR")
+
+    #: Адрес внешнего сторожа. Бот дёргает его при каждой успешной
+    #: проверке состояния; если сигналы прекратились, тревогу поднимает
+    #: внешняя служба — сам бот в этот момент уже молчит.
+    watchdog_url: str = Field(default="", alias="WATCHDOG_URL")
+    error_notify: bool = Field(default=True, alias="ERROR_NOTIFY")
+
     # ─── Приложение ──────────────────────────────────────────────────────────
     log_level: Literal["debug", "info", "warning", "error"] = Field(
         default="info", alias="LOG_LEVEL"

@@ -122,3 +122,27 @@ class FakeBot:
     async def delete_message(self, chat_id: int, message_id: int) -> bool:
         self.calls.append(Call("delete_message", {"chat_id": chat_id, "message_id": message_id}))
         return True
+
+    async def send_message(self, chat_id: int, text: str, **kwargs: Any) -> Any:
+        self.calls.append(Call("send_message", {"chat_id": chat_id, "text": text}))
+        if self._error is not None:
+            raise self._error
+        return None
+
+    async def send_document(self, chat_id: int, document: Any, **kwargs: Any) -> Any:
+        name = getattr(document, "filename", "")
+        self.calls.append(Call("send_document", {"chat_id": chat_id, "filename": name}))
+        if self._error is not None:
+            raise self._error
+        return None
+
+    async def get_me(self) -> Any:
+        self.calls.append(Call("get_me", {}))
+        if self._error is not None:
+            raise self._error
+
+        class _Me:
+            id = self.id
+            username = "linkermor_bot"
+
+        return _Me()

@@ -41,6 +41,9 @@ services:
         condition: service_healthy
     # Миграции применяются до запуска бота, чтобы схема всегда была актуальной.
     command: ["sh", "-c", "alembic upgrade head && python main.py"]
+    volumes:
+      # Копии переживают пересборку образа.
+      - ./backups:/app/backups
 
 volumes:
   pgdata:

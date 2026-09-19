@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from cache.backend import CacheBackend
 from core.errors import LinkerMorError
 from core.logging import get_logger
+from sender.notifier import OwnerNotifier
 from texts.defs import TextRegistry
 from texts.service import TextService
 
@@ -32,10 +33,12 @@ class ErrorMiddleware(BaseMiddleware):
         session_factory: async_sessionmaker[AsyncSession],
         cache: CacheBackend,
         text_registry: TextRegistry,
+        notifier: OwnerNotifier | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._cache = cache
         self._registry = text_registry
+        self._notifier = notifier
 
     async def __call__(
         self,
@@ -58,9 +61,24 @@ class ErrorMiddleware(BaseMiddleware):
         except TelegramAPIError:
             log.error("ошибка Telegram API", exc_info=True)
             await self._reply(event, "error_unknown", {})
-        except Exception:
+        except Exception as exc:
             log.exception("необработанное исключение")
             await self._reply(event, "error_unknown", {})
+            # Владелец должен узнать о поломке, не читая логи на сервере.
+            if self._notifier is not None:
+                await self._notifier.notify_error(
+                    exc,
+                    {
+                        "handler": getattr(handler, "__qualname__", ""),
+                        "chat_id": data.get("event_chat").id
+                        if data.get("event_chat") is not None
+                        else None,
+                        "user_id": data.get("event_from_user").id
+                        if data.get("event_from_user") is not None
+                        else None,
+                        "correlation_id": data.get("correlation_id"),
+                    },
+                )
         return None
 
     async def _reply(self, event: TelegramObject, text_key: str, values: dict[str, Any]) -> None:

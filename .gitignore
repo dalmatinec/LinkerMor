@@ -20,6 +20,7 @@ htmlcov/
 # Runtime
 logs/
 *.log
+backups/
 
 # OS / editors
 .DS_Store

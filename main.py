@@ -22,6 +22,13 @@ async def run(app: AppContext) -> None:
     me = await app.bot.get_me()
     log.info("бот запущен", extra={"bot": f"@{me.username}", "bot_id": me.id})
 
+    # Владелец должен видеть каждый запуск: неожиданный запуск означает,
+    # что до него был незамеченный сбой.
+    await app.notifier.notify(
+        f"Бот запущен: @{me.username}\nМодулей подключено: {len(app.registry.specs)}",
+        force=True,
+    )
+
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -38,6 +45,7 @@ async def run(app: AppContext) -> None:
     await asyncio.wait([polling, asyncio.create_task(stop.wait())], return_when=asyncio.FIRST_COMPLETED)
 
     log.info("получен сигнал остановки")
+    await app.notifier.notify("Бот остановлен.", force=True)
     await app.dispatcher.stop_polling()
     with contextlib.suppress(asyncio.CancelledError):
         await polling
