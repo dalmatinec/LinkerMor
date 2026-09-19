@@ -127,5 +127,70 @@ def test_every_registered_text_is_used_in_code(project_root: Path) -> None:
         if path.relative_to(project_root).parts[0] not in {"tests", "texts"}
     )
 
-    unused = [key for key in registry.keys if f'"{key}"' not in sources]
+    unused = [
+        key
+        for key in registry.keys
+        if not registry.get(key).dynamic and f'"{key}"' not in sources
+    ]
     assert not unused, f"Тексты объявлены, но не используются: {unused}"
+
+
+def test_default_texts_use_only_known_placeholders(project_root: Path) -> None:
+    """Плейсхолдер-опечатка в тексте по умолчанию оставила бы пустое место.
+
+    Проверка касается и текстов-подсказок: фигурные скобки в них
+    подставляются так же, как в обычных сообщениях.
+    """
+    import sys
+
+    sys.path.insert(0, str(project_root))
+    from core.bootstrap import ENABLED_MODULES
+    from texts.defs import build_registry
+    from texts.entities import EntityText
+    from texts.placeholders import unknown_placeholders
+
+    registry = build_registry(ENABLED_MODULES())
+    broken = {
+        key: sorted(unknown)
+        for key in registry.keys
+        if (unknown := unknown_placeholders(EntityText(text=registry.get(key).default)))
+    }
+
+    assert not broken, f"Неизвестные плейсхолдеры в текстах по умолчанию: {broken}"
+
+
+def test_callback_data_fits_telegram_limit(project_root: Path) -> None:
+    """Telegram отвергает callback_data длиннее 64 байт.
+
+    Проверяются самые длинные реальные сочетания модуля и ключа: если
+    новый модуль назовут слишком длинно, тест упадёт до того, как кнопка
+    перестанет работать у людей.
+    """
+    import sys
+
+    sys.path.insert(0, str(project_root))
+    from core.bootstrap import ENABLED_MODULES
+    from core.constants import CALLBACK_DATA_MAX_BYTES
+    from mod_admin.callbacks import SettingAction, TextAction
+    from settings.defs import build_registry as build_settings
+    from texts.defs import build_registry as build_texts
+
+    specs = ENABLED_MODULES()
+    oversized: list[str] = []
+
+    settings_registry = build_settings(specs)
+    for key in settings_registry.keys:
+        definition = settings_registry.get(key)
+        suffix = key.split(".", 1)[1] if "." in key else key
+        packed = SettingAction(module=definition.module, key=suffix, action="toggle").pack()
+        if len(packed.encode("utf-8")) > CALLBACK_DATA_MAX_BYTES:
+            oversized.append(packed)
+
+    text_registry = build_texts(specs)
+    for key in text_registry.keys:
+        definition = text_registry.get(key)
+        packed = TextAction(module=definition.module, key=key, action="open").pack()
+        if len(packed.encode("utf-8")) > CALLBACK_DATA_MAX_BYTES:
+            oversized.append(packed)
+
+    assert not oversized, f"callback_data превышает лимит: {oversized}"

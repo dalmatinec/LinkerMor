@@ -152,7 +152,8 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     Подключение нового модуля — импорт его ``spec`` и одна строка здесь.
     Порядок в списке значения не имеет: очередь определяет ``priority``.
     """
+    from mod_admin.spec import MODULE as admin
     from mod_chats.spec import MODULE as chats
     from mod_moderation.spec import MODULE as moderation
 
-    return [chats, moderation]
+    return [chats, admin, moderation]

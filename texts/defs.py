@@ -27,6 +27,10 @@ class TextDef:
     default: str
     module: str
     description: str
+    #: Текст создан по списку модулей, а не объявлен вручную. Такие ключи
+    #: не встречаются в коде буквально, поэтому проверка использования их
+    #: пропускает.
+    dynamic: bool = False
 
 
 class TextRegistry:
@@ -111,8 +115,25 @@ CORE_TEXTS: list[TextDef] = [
 
 
 def build_registry(module_specs: list) -> TextRegistry:
-    """Собрать реестр из текстов ядра и текстов модулей."""
+    """Собрать реестр из текстов ядра, текстов модулей и меток модулей.
+
+    Для каждого модуля заводится подпись его раздела в панели: владелец
+    бота может переименовать разделы и поставить в них премиум-эмодзи.
+    """
     definitions = list(CORE_TEXTS)
+    names = {"core"}
     for spec in module_specs:
         definitions.extend(spec.text_defs)
+        names.add(spec.name)
+
+    definitions.extend(
+        TextDef(
+            key=f"module_{name}",
+            default=name,
+            module="admin",
+            description=f"Название раздела «{name}» в панели",
+            dynamic=True,
+        )
+        for name in sorted(names)
+    )
     return TextRegistry(definitions)
