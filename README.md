@@ -37,10 +37,17 @@ cp .env.example .env      # заполнить
 
 ## Разработка
 
+Тесты работают на настоящем PostgreSQL: проект опирается на JSONB, частичные
+индексы и `ON CONFLICT`, которых нет в SQLite.
+
 ```bash
-.venv/bin/python -m pytest        # тесты
+createdb linkermor_test                       # один раз
+.venv/bin/python -m pytest                    # тесты
 .venv/bin/alembic revision --autogenerate -m "описание"
+.venv/bin/alembic upgrade head
 ```
+
+Адрес тестовой базы переопределяется переменной `TEST_DATABASE_URL`.
 
 ## Безопасность
 

@@ -20,6 +20,8 @@ from core.config import Settings
 from core.logging import get_logger
 from core.registry import ModuleRegistry, build_registry
 from database.engine import create_engine, create_session_factory
+from middlewares.chat_context import ChatContextMiddleware
+from middlewares.db_session import DbSessionMiddleware
 from middlewares.error import ErrorMiddleware
 from middlewares.logging import LoggingMiddleware
 
@@ -74,11 +76,13 @@ def build_app(settings: Settings) -> AppContext:
     session_factory = create_session_factory(engine)
     cache = MemoryCache()
 
-    # Порядок внешних middleware: сначала контекст логирования, затем
-    # перехват ошибок — чтобы упавший хендлер писался уже с correlation id.
-    for observer in (dispatcher.update.outer_middleware,):
-        observer(LoggingMiddleware())
-        observer(ErrorMiddleware())
+    # Порядок важен: контекст логирования → перехват ошибок → сессия базы
+    # → контекст чата. Упавший хендлер логируется уже с correlation id, а
+    # транзакция закрывается до того, как ошибка покинет обработку.
+    dispatcher.update.outer_middleware(LoggingMiddleware())
+    dispatcher.update.outer_middleware(ErrorMiddleware())
+    dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
+    dispatcher.update.outer_middleware(ChatContextMiddleware())
 
     registry = build_registry(ENABLED_MODULES())
     registry.attach(dispatcher)
@@ -107,4 +111,6 @@ def ENABLED_MODULES() -> list:  # noqa: N802 - список включённых
     Подключение нового модуля — импорт его ``spec`` и одна строка здесь.
     Порядок в списке значения не имеет: очередь определяет ``priority``.
     """
-    return []
+    from mod_chats.spec import MODULE as chats
+
+    return [chats]
