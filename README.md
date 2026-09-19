@@ -58,5 +58,6 @@ createdb linkermor_test                       # один раз
 
 ## Документация
 
+- [docs/GUIDE.md](docs/GUIDE.md) — возможности, команды, требования к серверу
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — устройство проекта
 - [docs/DECISIONS.md](docs/DECISIONS.md) — принятые технические решения
