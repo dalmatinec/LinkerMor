@@ -53,6 +53,18 @@ class FakeBot:
 
     # ─── Методы Bot API ──────────────────────────────────────────────────────
 
+    async def __call__(self, method: Any, request_timeout: int | None = None) -> Any:
+        """Вызов метода объектом-методом: так работают ответы на нажатия.
+
+        ``CallbackQuery.answer()`` не дёргает именованный метод бота, а
+        передаёт боту готовый объект метода. Без этого подделка падала бы
+        на любом тесте, который нажимает кнопку.
+        """
+        self.calls.append(Call(type(method).__name__, method.model_dump(exclude_none=True)))
+        if self._error is not None:
+            raise self._error
+        return True
+
     async def get_chat_administrators(self, chat_id: int) -> list[Any]:
         self.calls.append(Call("get_chat_administrators", {"chat_id": chat_id}))
         if self._error is not None:

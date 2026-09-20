@@ -106,6 +106,12 @@ CORE_TEXTS: list[TextDef] = [
         description="Непредвиденная ошибка: подробности уходят в лог, не пользователю",
     ),
     TextDef(
+        key="callback_unknown",
+        default="Кнопка устарела. Откройте меню заново командой /start",
+        module="core",
+        description="Нажали кнопку, которую бот больше не понимает",
+    ),
+    TextDef(
         key="error_config",
         default="Бот настроен неверно. Сообщите владельцу.",
         module="core",

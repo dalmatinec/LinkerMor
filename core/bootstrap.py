@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from cache.memory import MemoryCache
 from core.config import Settings
 from core.logging import get_logger
+from core.fallback import router as fallback_router
 from core.registry import ModuleRegistry, build_registry
 from settings.defs import SettingsRegistry, build_registry as build_settings_registry
 from texts.defs import TextRegistry, build_registry as build_texts_registry
@@ -134,6 +135,9 @@ def build_app(settings: Settings) -> AppContext:
     )
 
     registry.attach(dispatcher)
+    # Последним — страховка: нажатие, которое никто не разобрал, не должно
+    # уходить в тишину.
+    dispatcher.include_router(fallback_router)
 
     log.info(
         "реестры собраны",

@@ -13,13 +13,14 @@ from datetime import UTC, datetime
 import pytest
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Chat as TgChat
+from aiogram.types import CallbackQuery, Chat as TgChat
 from aiogram.types import Message, Update
 from aiogram.types import User as TgUser
 
 from cache.memory import MemoryCache
 from core.bootstrap import ENABLED_MODULES
 from core.config import Settings
+from core.fallback import router as fallback_router
 from core.registry import build_registry as build_modules
 from middlewares.activity import ActivityMiddleware
 from middlewares.chat_context import ChatContextMiddleware
@@ -77,6 +78,8 @@ def dispatcher(session_factory, cache, config, sender) -> Dispatcher:
     )
     dispatcher["cache"] = cache
     build_modules(specs).attach(dispatcher)
+    fallback_router._parent_router = None
+    dispatcher.include_router(fallback_router)
     return dispatcher
 
 
@@ -266,3 +269,99 @@ async def test_person_who_added_bot_can_open_the_panel(dispatcher, session_facto
         chats = await MemberRepository(session).list_chats_for_user(USER.id, Role.CHAT_ADMIN)
 
     assert [chat.chat_id for chat in chats] == [CHAT_ID]
+
+
+async def test_unhandled_click_gets_an_answer_instead_of_silence(
+    dispatcher, session_factory
+) -> None:
+    """Кнопка, которую никто не разобрал, обязана сказать об этом человеку.
+
+    Раньше такое нажатие уходило в пустоту: часики на кнопке крутились,
+    в логах не оставалось ни строчки, и со стороны бот выглядел мёртвым.
+    """
+    await prepare(session_factory)
+    bot = FakeBot()
+
+    await dispatcher.feed_update(
+        bot,
+        Update(
+            update_id=900,
+            callback_query=CallbackQuery(
+                id="900",
+                from_user=USER,
+                chat_instance="test",
+                data="нет:такого:модуля",
+                message=Message(
+                    message_id=901,
+                    date=datetime.now(UTC),
+                    chat=TG_CHAT,
+                    from_user=USER,
+                    text="меню",
+                ),
+            ),
+        ),
+    )
+
+    answer = bot.called("AnswerCallbackQuery")
+    assert answer is not None, "нажатие осталось без ответа"
+    assert answer.kwargs["show_alert"] is True
+    assert answer.kwargs["text"], "ответ пустой"
+
+
+PRIVATE_CHAT = TgChat(id=USER.id, type="private")
+
+
+def private_message(text: str, update_id: int) -> Update:
+    return Update(
+        update_id=update_id,
+        message=Message(
+            message_id=update_id + 100,
+            date=datetime.now(UTC),
+            chat=PRIVATE_CHAT,
+            from_user=USER,
+            text=text,
+        ),
+    )
+
+
+def private_click(data: str, update_id: int) -> Update:
+    return Update(
+        update_id=update_id,
+        callback_query=CallbackQuery(
+            id=str(update_id),
+            from_user=USER,
+            chat_instance="test",
+            data=data,
+            message=Message(
+                message_id=update_id + 100,
+                date=datetime.now(UTC),
+                chat=PRIVATE_CHAT,
+                from_user=USER,
+                text="панель",
+            ),
+        ),
+    )
+
+
+async def test_chat_button_in_panel_opens_the_chat(dispatcher, session_factory) -> None:
+    """Нажатие на чат в списке панели обязано открывать его настройки.
+
+    Именно этот путь был сломан: у CallbackQuery нет поля chat, поэтому
+    фильтр личных сообщений отсекал каждое нажатие. Кнопка выглядела
+    живой, но не делала ничего и ничего не писала в лог.
+    """
+    from mod_admin.callbacks import ChatChoice
+
+    await prepare(session_factory, admin=True)
+    bot = FakeBot()
+
+    await dispatcher.feed_update(bot, private_message("/admin", 700))
+    assert bot.called("SendMessage") is not None, "панель не открылась"
+
+    bot.calls.clear()
+    await dispatcher.feed_update(
+        bot, private_click(ChatChoice(chat_id=CHAT_ID).pack(), 701)
+    )
+
+    assert bot.called("EditMessageText") is not None, "кнопка чата не сработала"
+    assert bot.called("AnswerCallbackQuery") is not None, "часики на кнопке не сняты"
