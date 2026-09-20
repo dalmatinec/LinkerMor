@@ -228,3 +228,25 @@ def test_extra_does_not_use_reserved_logging_names(project_root: Path) -> None:
                     offenders.append(f"{path.relative_to(project_root)}:{line} — {key!r}")
 
     assert not offenders, "Занятые именами logging поля в extra:\n" + "\n".join(offenders)
+
+
+def test_bot_texts_avoid_em_dashes(project_root: Path) -> None:
+    """Заказчик просил живой язык без длинных тире.
+
+    Проверка касается только текстов, которые видит человек в Telegram.
+    Комментарии и документация проекта под правило не подпадают.
+    """
+    import sys
+
+    sys.path.insert(0, str(project_root))
+    from core.bootstrap import ENABLED_MODULES
+    from texts.defs import build_registry
+
+    registry = build_registry(ENABLED_MODULES())
+    offenders = [
+        key
+        for key in registry.keys
+        if "—" in registry.get(key).default or "–" in registry.get(key).default
+    ]
+
+    assert not offenders, f"Длинное тире в текстах бота: {offenders}"

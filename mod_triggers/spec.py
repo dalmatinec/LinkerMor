@@ -55,7 +55,7 @@ TEXTS = [
     ),
     TextDef(
         key="trigger_limit",
-        default="В чате уже {count} триггеров — это предел.",
+        default="В чате уже {count} триггеров, это предел.",
         module="triggers",
         description="Достигнут предел триггеров",
     ),

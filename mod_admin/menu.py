@@ -20,6 +20,7 @@ from mod_admin.callbacks import (
     ModuleAction,
     Nav,
     SettingAction,
+    StartAction,
     TextAction,
     WelcomeAction,
 )
@@ -506,3 +507,126 @@ async def list_screen(
         values={"items": "\n".join(items) if items else "", "count": str(len(items))},
         rows=rows,
     )
+
+
+# ─── Стартовый экран ─────────────────────────────────────────────────────────
+
+#: Права, которые бот просит при добавлении в группу. Подставляются в
+#: ссылку, поэтому нужные галочки будут отмечены заранее.
+REQUESTED_RIGHTS = "+".join(
+    (
+        "delete_messages",
+        "restrict_members",
+        "invite_users",
+        "pin_messages",
+        "manage_chat",
+    )
+)
+
+
+def add_to_chat_url(bot_username: str) -> str:
+    """Ссылка добавления бота в группу с заранее отмеченными правами."""
+    return f"https://t.me/{bot_username}?startgroup=true&admin={REQUESTED_RIGHTS}"
+
+
+async def start_screen(texts: TextService, bot_username: str, user_name: str) -> Screen:
+    """Первое, что видит человек в личке бота."""
+    rows = [
+        [
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_add"),
+                url=add_to_chat_url(bot_username),
+                style=parse_style("green"),
+            )
+        ],
+        [
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_guide"),
+                callback_data=StartAction(screen="guide").pack(),
+                style=parse_style("blue"),
+            ),
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_chats"),
+                callback_data=Nav(screen="chats").pack(),
+                style=parse_style("blue"),
+            ),
+        ],
+        [
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_profile"),
+                callback_data=StartAction(screen="profile").pack(),
+            )
+        ],
+    ]
+    return Screen(text_key="start_greeting", values={"user": user_name}, rows=rows)
+
+
+async def guide_screen(texts: TextService, screen: str, bot_username: str) -> Screen:
+    """Инструкция: устройство, команды, настройка."""
+    text_key = {
+        "guide": "guide_main",
+        "commands": "guide_commands",
+        "setup": "guide_setup",
+    }[screen]
+
+    rows: list[list[ButtonSpec]] = []
+    if screen == "guide":
+        rows.append(
+            [
+                ButtonSpec(
+                    text=await label(texts, None, "guide_btn_commands"),
+                    callback_data=StartAction(screen="commands").pack(),
+                ),
+                ButtonSpec(
+                    text=await label(texts, None, "guide_btn_setup"),
+                    callback_data=StartAction(screen="setup").pack(),
+                ),
+            ]
+        )
+        rows.append(
+            [
+                ButtonSpec(
+                    text=await label(texts, None, "start_btn_add"),
+                    url=add_to_chat_url(bot_username),
+                    style=parse_style("green"),
+                )
+            ]
+        )
+    else:
+        rows.append(
+            [
+                ButtonSpec(
+                    text=await label(texts, None, "guide_btn_back"),
+                    callback_data=StartAction(screen="guide").pack(),
+                )
+            ]
+        )
+
+    rows.append(
+        [
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_home"),
+                callback_data=StartAction(screen="main").pack(),
+            )
+        ]
+    )
+    return Screen(text_key=text_key, rows=rows)
+
+
+async def profile_screen(
+    texts: TextService, values: dict[str, Any]
+) -> Screen:
+    """Сведения о человеке: кто он для бота и где распоряжается."""
+    rows = [
+        [
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_chats"),
+                callback_data=Nav(screen="chats").pack(),
+            ),
+            ButtonSpec(
+                text=await label(texts, None, "start_btn_home"),
+                callback_data=StartAction(screen="main").pack(),
+            ),
+        ]
+    ]
+    return Screen(text_key="profile_info", values=values, rows=rows)
