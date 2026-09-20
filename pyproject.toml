@@ -1,0 +1,33 @@
+[project]
+name = "linkermor"
+version = "0.1.0"
+description = "Multi-tenant Telegram moderation bot: one process serves many chats with isolated settings"
+requires-python = ">=3.11"
+
+dependencies = [
+    "aiogram==3.31.0",           # Bot API 10.3 (style, icon_custom_emoji_id, rich messages)
+    "sqlalchemy[asyncio]==2.0.54",
+    "asyncpg==0.31.0",           # async PostgreSQL driver for SQLAlchemy
+    "alembic==1.20.0",           # schema migrations
+    "pydantic-settings==2.15.0", # .env loading + startup validation (ТЗ §29)
+    "redis==8.1.0",              # FSM storage, TTL counters, callback token store
+    "uvloop==0.22.1",            # faster event loop; measurable win on hot update paths
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
