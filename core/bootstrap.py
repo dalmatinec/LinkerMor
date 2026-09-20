@@ -84,9 +84,18 @@ class AppContext:
 
 def build_app(settings: Settings) -> AppContext:
     """Собрать приложение из конфигурации."""
+    # Прокси задаётся только если указан: пустое значение означает
+    # прямое подключение, а не подключение через пустой адрес.
+    session = AiohttpSession(
+        timeout=settings.telegram_timeout,
+        proxy=settings.proxy_url or None,
+    )
+    if settings.proxy_url:
+        log.info("обращения к Telegram идут через прокси")
+
     bot = Bot(
         token=settings.bot_token.get_secret_value(),
-        session=AiohttpSession(timeout=settings.telegram_timeout),
+        session=session,
         default=DefaultBotProperties(parse_mode=None),  # форматирование задаём entities
     )
 
