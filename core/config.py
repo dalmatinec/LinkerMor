@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     #: при нестабильной связи выгоднее быстро оборвать попытку и повторить,
     #: чем ждать минуту впустую.
     telegram_timeout: int = Field(default=20, ge=5, le=120, alias="TELEGRAM_TIMEOUT")
+    #: Прокси для обращений к Telegram. Нужен там, где прямой доступ
+    #: закрыт или неустойчив: трафик идёт через посторонний сервер, а сам
+    #: бот и его база остаются на месте.
+    #: Примеры: socks5://host:1080, http://user:pass@host:3128
+    proxy_url: str = Field(default="", alias="PROXY_URL")
+
     #: Сколько раз пытаться связаться с Telegram при запуске.
     startup_retries: int = Field(default=30, ge=1, le=200, alias="STARTUP_RETRIES")
     #: Пауза между попытками, в секундах.

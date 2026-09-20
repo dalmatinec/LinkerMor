@@ -44,6 +44,10 @@ services:
     volumes:
       # Копии переживают пересборку образа.
       - ./backups:/app/backups
+    extra_hosts:
+      # Чтобы контейнер мог достучаться до прокси, поднятого на самом
+      # сервере: адрес host.docker.internal указывает на хост.
+      - "host.docker.internal:host-gateway"
 
 volumes:
   pgdata:
