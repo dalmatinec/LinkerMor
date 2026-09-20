@@ -33,6 +33,7 @@ from mod_admin.callbacks import (
     ModuleAction,
     Nav,
     SettingAction,
+    StartAction,
     TextAction,
     WelcomeAction,
 )
@@ -134,7 +135,87 @@ async def _open_chat_list(
 # ─── Вход в панель ───────────────────────────────────────────────────────────
 
 
+async def _bot_username(bot: Bot) -> str:
+    """Имя бота для ссылки добавления в группу. Значение кешируется aiogram."""
+    me = await bot.me()
+    return me.username or ""
+
+
 @router.message(CommandStart(), InPrivate())
+async def cmd_start(
+    message: Message,
+    bot: Bot,
+    texts: TextService,
+    state: FSMContext,
+) -> None:
+    """Приветствие с кратким описанием и кнопками."""
+    await state.set_state(AdminPanel.browsing)
+    name = message.from_user.first_name or ""
+    await _show(
+        message, texts, None,
+        await menu.start_screen(texts, await _bot_username(bot), name),
+    )
+
+
+@router.callback_query(StartAction.filter(F.screen == "main"), InPrivate())
+async def nav_start(
+    callback: CallbackQuery,
+    bot: Bot,
+    texts: TextService,
+) -> None:
+    name = callback.from_user.first_name or ""
+    await _show(
+        callback, texts, None,
+        await menu.start_screen(texts, await _bot_username(bot), name),
+    )
+
+
+@router.callback_query(
+    StartAction.filter(F.screen.in_({"guide", "commands", "setup"})), InPrivate()
+)
+async def nav_guide(
+    callback: CallbackQuery,
+    callback_data: StartAction,
+    bot: Bot,
+    texts: TextService,
+) -> None:
+    """Инструкция и её разделы."""
+    await _show(
+        callback, texts, None,
+        await menu.guide_screen(texts, callback_data.screen, await _bot_username(bot)),
+    )
+
+
+@router.callback_query(StartAction.filter(F.screen == "profile"), InPrivate())
+async def nav_profile(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    texts: TextService,
+    permissions: PermissionService,
+) -> None:
+    """Кто человек для бота и где он распоряжается."""
+    user_id = callback.from_user.id
+    is_owner = await permissions.is_owner(user_id)
+
+    if is_owner:
+        from core.constants import ChatStatus
+
+        chats = await ChatRepository(session).list_by_status(ChatStatus.ACTIVE, limit=200)
+    else:
+        chats = await MemberRepository(session).list_chats_for_user(user_id, PANEL_ROLE)
+
+    values = {
+        "user": callback.from_user.first_name or "",
+        "user_id": str(user_id),
+        "username": f"@{callback.from_user.username}" if callback.from_user.username else "",
+        "count": str(len(chats)),
+        "items": "\n".join(f"• {chat.title or chat.chat_id}" for chat in chats) or "",
+        "role": (await texts.render(None, "profile_role_owner" if is_owner
+                                    else "profile_role_admin", {})).text,
+    }
+    await _show(callback, texts, None, await menu.profile_screen(texts, values))
+
+
 @router.message(Command("admin", "panel"), InPrivate())
 async def cmd_panel(
     message: Message,
@@ -143,7 +224,7 @@ async def cmd_panel(
     permissions: PermissionService,
     state: FSMContext,
 ) -> None:
-    """Открыть панель: сначала выбор чата."""
+    """Открыть панель: сразу выбор чата."""
     await _open_chat_list(message, session, texts, permissions, state)
 
 

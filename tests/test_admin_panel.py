@@ -350,3 +350,40 @@ def test_short_commands_do_not_collide() -> None:
 
     duplicates = {name: count for name, count in counts.items() if count > 1}
     assert not duplicates, f"Команды объявлены дважды: {duplicates}"
+
+
+# ─── Стартовый экран ─────────────────────────────────────────────────────────
+
+
+async def test_start_screen_offers_add_button_with_rights(texts) -> None:
+    """Ссылка добавления сразу отмечает нужные права в диалоге Telegram."""
+    screen = await menu.start_screen(texts, "linkermor_bot", "Иван")
+
+    add_button = screen.rows[0][0]
+    assert add_button.url.startswith("https://t.me/linkermor_bot?startgroup=true")
+    assert "delete_messages" in add_button.url
+    assert "restrict_members" in add_button.url
+
+
+async def test_start_screen_has_guide_chats_and_profile(texts) -> None:
+    screen = await menu.start_screen(texts, "linkermor_bot", "Иван")
+
+    labels = [button.text for row in screen.rows for button in row]
+    assert labels == ["Добавить в чат", "Инструкция", "Мои чаты", "Профиль"]
+
+
+async def test_greeting_addresses_the_person_by_name(texts) -> None:
+    screen = await menu.start_screen(texts, "linkermor_bot", "Иван")
+    rendered = await texts.render(None, screen.text_key, screen.values)
+
+    assert rendered.text.startswith("Привет, Иван!")
+
+
+async def test_guide_sections_are_reachable(texts) -> None:
+    main = await menu.guide_screen(texts, "guide", "linkermor_bot")
+    commands = await menu.guide_screen(texts, "commands", "linkermor_bot")
+
+    assert main.text_key == "guide_main"
+    assert commands.text_key == "guide_commands"
+    # Из раздела есть возврат к инструкции.
+    assert any("guide" in button.callback_data for row in commands.rows for button in row)

@@ -73,3 +73,9 @@ class ListAction(CallbackData, prefix="alt"):
     kind: str  # words | forwards
     action: str  # open | add | remove
     index: int = -1
+
+
+class StartAction(CallbackData, prefix="st"):
+    """Переходы по стартовому экрану: инструкция, профиль, мои чаты."""
+
+    screen: str  # main | guide | commands | setup | profile
