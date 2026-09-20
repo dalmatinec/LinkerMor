@@ -20,25 +20,46 @@ log = get_logger(__name__)
 
 
 async def check_connection(app: AppContext):
-    """Убедиться, что бот может говорить с Telegram.
+    """Дождаться связи с Telegram, повторяя попытки.
 
-    Проверка отделена от запуска, чтобы две самые частые ошибки первого
-    запуска — опечатка в токене и закрытая сеть — выглядели как понятное
-    сообщение, а не как traceback на сорок строк.
+    Связь с Telegram бывает неустойчивой: у части хостингов первая
+    попытка обрывается по таймауту, а следующая проходит. Сдаваться после
+    одной попытки нельзя — бот не должен требовать ручного перезапуска
+    из-за мигнувшей сети.
+
+    Повторы прекращаются только в двух случаях: связь установлена либо
+    Telegram отверг токен. Неверный токен от повторов не исправится.
     """
-    try:
-        return await app.bot.get_me()
-    except TelegramUnauthorizedError:
-        log.error(
-            "Telegram отверг токен. Проверьте BOT_TOKEN в .env — "
-            "его выдаёт @BotFather, и он мог быть отозван"
-        )
-    except (TelegramNetworkError, ClientError, OSError) as exc:
-        log.error(
-            "нет связи с Telegram. Проверьте сеть сервера и доступность "
-            "api.telegram.org",
-            extra={"reason": str(exc)[:200]},
-        )
+    attempts = app.settings.startup_retries
+    delay = app.settings.startup_retry_delay
+
+    for attempt in range(1, attempts + 1):
+        try:
+            return await app.bot.get_me()
+        except TelegramUnauthorizedError:
+            log.error(
+                "Telegram отверг токен. Проверьте BOT_TOKEN в .env — "
+                "его выдаёт @BotFather, и он мог быть отозван"
+            )
+            return None
+        except (TelegramNetworkError, ClientError, OSError, asyncio.TimeoutError) as exc:
+            log.warning(
+                "связь с Telegram не установлена, повторяю",
+                extra={
+                    "attempt": attempt,
+                    "of": attempts,
+                    "retry_in": delay,
+                    "reason": str(exc)[:120],
+                },
+            )
+            if attempt < attempts:
+                await asyncio.sleep(delay)
+
+    log.error(
+        "не удалось связаться с Telegram за отведённое число попыток. "
+        "Проверьте сеть сервера и доступность api.telegram.org",
+        extra={"attempts": attempts},
+    )
     return None
 
 

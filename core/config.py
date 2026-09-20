@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     redis_db: int = Field(default=0, ge=0, alias="REDIS_DB")
     redis_password: SecretStr = Field(default=SecretStr(""), alias="REDIS_PASSWORD")
 
+    # ─── Подключение к Telegram ──────────────────────────────────────────────
+    #: Таймаут одного запроса к Telegram. Меньше значения по умолчанию:
+    #: при нестабильной связи выгоднее быстро оборвать попытку и повторить,
+    #: чем ждать минуту впустую.
+    telegram_timeout: int = Field(default=20, ge=5, le=120, alias="TELEGRAM_TIMEOUT")
+    #: Сколько раз пытаться связаться с Telegram при запуске.
+    startup_retries: int = Field(default=30, ge=1, le=200, alias="STARTUP_RETRIES")
+    #: Пауза между попытками, в секундах.
+    startup_retry_delay: int = Field(default=5, ge=1, le=120, alias="STARTUP_RETRY_DELAY")
+
     # ─── Надёжность ──────────────────────────────────────────────────────────
     backup_enabled: bool = Field(default=True, alias="BACKUP_ENABLED")
     backup_interval_hours: int = Field(default=24, ge=1, le=168, alias="BACKUP_INTERVAL_HOURS")
