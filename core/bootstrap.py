@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -85,6 +86,7 @@ def build_app(settings: Settings) -> AppContext:
     """Собрать приложение из конфигурации."""
     bot = Bot(
         token=settings.bot_token.get_secret_value(),
+        session=AiohttpSession(timeout=settings.telegram_timeout),
         default=DefaultBotProperties(parse_mode=None),  # форматирование задаём entities
     )
 
