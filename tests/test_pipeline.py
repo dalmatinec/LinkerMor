@@ -191,3 +191,78 @@ async def test_command_is_not_swallowed_by_collectors(
     await dispatcher.feed_update(FakeBot(), update("/lw"))
 
     assert sender.sent, "команда осталась без ответа"
+
+
+# ─── Подключение чата ────────────────────────────────────────────────────────
+
+
+def bot_added_update(update_id: int = 50) -> Update:
+    """Событие добавления бота в чат администратором."""
+    from aiogram.types import ChatMemberAdministrator, ChatMemberLeft, ChatMemberUpdated
+
+    bot_user = TgUser(id=999, is_bot=True, first_name="LinkerMor", username="linkermor_bot")
+    return Update(
+        update_id=update_id,
+        my_chat_member=ChatMemberUpdated(
+            chat=TG_CHAT,
+            from_user=USER,
+            date=datetime.now(UTC),
+            old_chat_member=ChatMemberLeft(user=bot_user),
+            new_chat_member=ChatMemberAdministrator(
+                user=bot_user,
+                can_be_edited=False,
+                is_anonymous=False,
+                can_manage_chat=True,
+                can_delete_messages=True,
+                can_manage_video_chats=True,
+                can_restrict_members=True,
+                can_promote_members=False,
+                can_change_info=True,
+                can_invite_users=True,
+                can_post_stories=False,
+                can_edit_stories=False,
+                can_delete_stories=False,
+                can_send_welcome_messages=True,
+            ),
+        ),
+    )
+
+
+async def test_adding_bot_registers_the_chat(dispatcher, session_factory) -> None:
+    """Без этого чат не появляется в базе, и панель говорит «чатов нет».
+
+    Проверяется через диспетчер целиком: ошибка была именно в фильтре
+    обработчика, а не в сервисе — сервис в отдельных тестах работал.
+    """
+    from core.constants import ChatStatus
+    from mod_chats.repo import ChatRepository
+
+    await dispatcher.feed_update(FakeBot(), bot_added_update())
+
+    async with session_factory() as session:
+        chat = await ChatRepository(session).get(CHAT_ID)
+
+    assert chat is not None, "чат не зарегистрирован при добавлении бота"
+    assert chat.status == ChatStatus.ACTIVE
+    assert chat.bot_permissions["can_delete_messages"] is True
+
+
+async def test_person_who_added_bot_can_open_the_panel(dispatcher, session_factory) -> None:
+    """Тот, кто подключил бота, должен сразу видеть чат в панели.
+
+    Подключение сразу же сверяет список администраторов с Telegram,
+    поэтому подделка обязана вернуть настоящий список: иначе роль будет
+    снята как у постороннего — и это правильное поведение.
+    """
+    from aiogram.types import ChatMemberOwner
+
+    from core.constants import Role
+    from mod_chats.repo import MemberRepository
+
+    bot = FakeBot(administrators=[ChatMemberOwner(user=USER, is_anonymous=False)])
+    await dispatcher.feed_update(bot, bot_added_update())
+
+    async with session_factory() as session:
+        chats = await MemberRepository(session).list_chats_for_user(USER.id, Role.CHAT_ADMIN)
+
+    assert [chat.chat_id for chat in chats] == [CHAT_ID]

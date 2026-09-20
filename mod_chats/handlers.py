@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from aiogram import Bot, Router
-from aiogram.filters import ChatMemberUpdatedFilter
 from aiogram.types import ChatMemberUpdated, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +23,9 @@ log = get_logger(__name__)
 router = Router(name="chats")
 
 
-@router.my_chat_member(InGroup(), ChatMemberUpdatedFilter(member_status_changed=True))
+# Фильтр по смене статуса здесь не нужен: событие my_chat_member и так
+# приходит только тогда, когда положение самого бота в чате изменилось.
+@router.my_chat_member(InGroup())
 async def on_bot_status_changed(
     event: ChatMemberUpdated,
     session: AsyncSession,
