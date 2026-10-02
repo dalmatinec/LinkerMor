@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
@@ -95,6 +96,10 @@ async def main() -> None:
     await settings.load()
 
     session = AiohttpSession(proxy=config.proxy, timeout=config.request_timeout)
+    if config.ipv4_only and not config.proxy:
+        # На многих VPS IPv6 настроен, но не работает: соединение по нему
+        # висит до таймаута, хотя по IPv4 Telegram доступен.
+        session._connector_init["family"] = socket.AF_INET
     bot = Bot(config.bot_token, session=session)
     bot.session.middleware(ThrottleMiddleware(
         global_rate=config.global_rate,

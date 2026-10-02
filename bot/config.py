@@ -38,6 +38,7 @@ class Config:
     broadcast_rate: float = 15.0       # рассылка, сообщений в секунду
     request_timeout: int = 60          # таймаут запроса к Telegram, секунд
     proxy: str | None = None           # socks5://… или http://… если Telegram недоступен напрямую
+    ipv4_only: bool = True             # не ходить к Telegram по IPv6
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -60,4 +61,5 @@ class Config:
             broadcast_rate=float(env("BROADCAST_RATE", cls.broadcast_rate)),
             request_timeout=int(env("REQUEST_TIMEOUT", cls.request_timeout)),
             proxy=env("PROXY") or None,
+            ipv4_only=env("IPV4_ONLY", "1").strip().lower() not in {"0", "false", "no"},
         )
