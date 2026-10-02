@@ -74,7 +74,7 @@ async def show_id(message: Message, db: Database) -> None:
         await message.reply(texts.ID_HINT, parse_mode="HTML")
         return
     user = await db.get_user(link[0])
-    name = users.mention(user) if user else "—"
+    name = users.mention(user) if user else str(link[0])
     await message.reply(f"{name}\n🆔 <code>{link[0]}</code>", parse_mode="HTML")
 
 

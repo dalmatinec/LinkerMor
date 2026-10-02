@@ -34,7 +34,7 @@ def generate(rng: random.Random | None = None) -> Challenge:
 
 class CaptchaStore:
     """Активные капчи в памяти. После перезапуска пользователь просто
-    получает новую — проходить её заново не обидно."""
+    получает новую, проходить её заново не обидно."""
 
     def __init__(self, clock=time.monotonic) -> None:
         self._clock = clock
@@ -62,7 +62,7 @@ class CaptchaStore:
         return self._items.get(user_id)
 
     def solve(self, user_id: int, value: int) -> bool | None:
-        """True — верно, False — неверно (выдана новая), None — нет капчи
+        """True: верно, False: неверно (выдана новая), None: нет капчи
         или попытки кончились (пользователь заблокирован на время)."""
         ch = self._items.get(user_id)
         if ch is None:

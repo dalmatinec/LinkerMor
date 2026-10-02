@@ -127,8 +127,8 @@ async def test_flood_stops_forwarding_and_warns(h):
     await h.start_and_pass(USER)
     for i in range(6):
         await h.feed(h.message(USER, f"сообщение {i}"))
-    assert len(h.session.of(CopyMessage, GROUP)) == 3, "лимит по умолчанию — 3"
-    warns = [m for m in h.session.of(SendMessage, USER) if "слишком часто" in m.text]
+    assert len(h.session.of(CopyMessage, GROUP)) == 3, "лимит по умолчанию 3"
+    warns = [m for m in h.session.of(SendMessage, USER) if "Слишком часто" in m.text]
     assert len(warns) == 1, "предупреждение один раз"
     assert any("флудит" in m.text for m in h.session.of(SendMessage, GROUP))
 
@@ -219,7 +219,7 @@ async def test_start_ad_sent_after_welcome(h):
 async def test_non_admin_has_no_panel(h):
     await h.settings.set("captcha", False)
     await h.feed(h.message(USER, "/admin"))
-    # /admin от обычного пользователя — просто сообщение в поддержку
+    # /admin от обычного пользователя просто сообщение в поддержку
     assert h.session.of(CopyMessage, GROUP)
 
 
@@ -264,7 +264,7 @@ async def test_broadcast_reaches_audience_and_marks_blocked(h):
     await h.dp["broadcaster"]._task
 
     got = {m.chat_id for m in h.session.of(SendMessage) if m.text == "Новости!"}
-    assert got == {OWNER, 601, 602}  # OWNER — предпросмотр
+    assert got == {OWNER, 601, 602}  # OWNER: предпросмотр
     assert (await h.db.get_user(602)).blocked_bot
     assert h.settings["last_broadcast"] > 0
 

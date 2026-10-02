@@ -28,6 +28,6 @@ async def staff_reply(message: Message, bot: Bot, db: Database) -> None:
         return
     link = await db.by_group_message(message.chat.id, message.reply_to_message.message_id)
     if link is None:
-        return  # ответ на обычное сообщение коллеги — не наше дело
+        return  # ответ на обычное сообщение коллеги, не наше дело
     user_id, user_msg_id = link
     await relay.to_user(bot, db, message, user_id, user_msg_id)

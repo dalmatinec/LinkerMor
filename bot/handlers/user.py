@@ -55,7 +55,7 @@ async def _flood(
 
 
 async def _after_captcha(bot: Bot, db: Database, settings: Settings, user: User, new: bool) -> None:
-    """Приветствие, реклама и только потом — сообщение в рабочую группу."""
+    """Приветствие, реклама и только потом сообщение в рабочую группу."""
     await relay.send_welcome(bot, settings, user.id)
     await relay.send_start_ad(bot, settings, user.id)
     await relay.send_card(bot, db, settings, user, new)

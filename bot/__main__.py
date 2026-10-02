@@ -38,7 +38,7 @@ async def wait_for_telegram(bot: Bot) -> User:
 
     На части серверов запросы к Telegram периодически обрываются по
     таймауту. Падать из-за этого нельзя: бот ждёт и пробует снова, пока
-    связь не появится. Сдаётся он только на неверном токене — его
+    связь не появится. Сдаётся он только на неверном токене, его
     повторы не исправят.
     """
     delay = 5
@@ -50,7 +50,7 @@ async def wait_for_telegram(bot: Bot) -> User:
             raise SystemExit("Telegram отверг токен: проверьте BOT_TOKEN в .env") from None
         except (TelegramNetworkError, TelegramServerError, OSError, asyncio.TimeoutError) as exc:
             log.warning(
-                "нет связи с Telegram (попытка %s): %s — повтор через %s сек.",
+                "нет связи с Telegram (попытка %s): %s, повтор через %s сек.",
                 attempt, exc, delay,
             )
             await asyncio.sleep(delay)

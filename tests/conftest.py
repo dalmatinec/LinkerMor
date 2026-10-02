@@ -2,7 +2,7 @@
 
 Поддельная сессия записывает каждый вызов Bot API и отвечает правдоподобно,
 поэтому апдейты проходят через настоящий диспетчер, роутеры, фильтры и
-middleware — как в бою, только без Telegram.
+middleware, как в бою, только без Telegram.
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ class Harness:
                 message_id=reply_to, date=dt.datetime.now(),
                 chat=Chat(id=chat_id, type=chat_type),
                 from_user=User(id=BOT_ID, is_bot=True, first_name="Bot"),
-                text="…",
+                text="...",
             )
         return Message(
             message_id=next(self._msgs),
@@ -155,7 +155,7 @@ async def h(db):
     await settings.set("group_id", GROUP)
     session = FakeSession()
     bot = Bot("42:TEST", session=session)
-    # Роутеры модулей — синглтоны, а диспетчер в каждом тесте новый.
+    # Роутеры модулей синглтоны, а диспетчер в каждом тесте новый.
     for r in (admin.router, moderation.router, group.router, user.router):
         r._parent_router = None
     dp = Dispatcher(storage=MemoryStorage())

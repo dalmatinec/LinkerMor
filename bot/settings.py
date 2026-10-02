@@ -14,8 +14,8 @@ DEFAULTS: dict[str, Any] = {
     "group_id": None,           # рабочая группа
     "group_title": None,
     "captcha": True,            # капча при /start
-    "flood_limit": 3,           # не больше стольких сообщений…
-    "flood_window": 10,         # …за столько секунд
+    "flood_limit": 3,           # не больше стольких сообщений
+    "flood_window": 10,         # за столько секунд
     "flood_mute": 30,           # пауза после превышения, секунд
     "welcome": None,            # своё приветствие (сохранённое сообщение)
     "start_ad": None,           # реклама после приветствия

@@ -31,7 +31,7 @@ async def send_welcome(bot: Bot, settings: Settings, chat_id: int) -> None:
             await stored.send(bot, chat_id, welcome)
             return
         except TelegramBadRequest as exc:
-            # Например, file_id стал недействителен — не оставляем без ответа.
+            # Например, file_id стал недействителен, не оставляем без ответа.
             log.warning("своё приветствие не отправилось: %s", exc)
     await bot.send_message(chat_id, texts.DEFAULT_WELCOME, parse_mode="HTML")
 
@@ -68,7 +68,7 @@ async def to_group(bot: Bot, db: Database, settings: Settings, message: Message,
     if group_id is None:
         return False
 
-    # Пользователь отвечает на ответ сотрудника — продолжаем ту же ветку.
+    # Пользователь отвечает на ответ сотрудника, продолжаем ту же ветку.
     reply_to = None
     if message.reply_to_message is not None:
         link = await db.by_user_message(user.id, message.reply_to_message.message_id)
@@ -110,9 +110,9 @@ async def to_user(bot: Bot, db: Database, message: Message, user_id: int, user_m
         return
 
     await db.map_user_message(user_id, copy.message_id, group_id, message.message_id)
-    # Реакция вместо сообщения «отправлено»: видно всем в группе и не
+    # Реакция вместо сообщения "отправлено": видно всем в группе и не
     # тратит лимит сообщений в группу.
     try:
         await bot.set_message_reaction(group_id, message.message_id, [ReactionTypeEmoji(emoji="👍")])
     except TelegramBadRequest:
-        pass  # реакции в группе выключены — ответ всё равно доставлен
+        pass  # реакции в группе выключены, ответ всё равно доставлен

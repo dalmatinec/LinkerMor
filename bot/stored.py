@@ -3,7 +3,7 @@
 Хранится не ссылка на сообщение админа, а его содержимое: тип, file_id,
 текст и entities. Так приветствие не ломается, если админ удалит
 исходное сообщение, а форматирование и премиум-эмодзи сохраняются
-полностью — entities передаются Telegram как есть, без разметки.
+полностью: entities передаются Telegram как есть, без разметки.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any
 from aiogram import Bot
 from aiogram.types import Message, MessageEntity
 
-# Тип -> (метод бота, имя параметра с файлом). Текст — особый случай.
+# Тип -> (метод бота, имя параметра с файлом). Текст особый случай.
 MEDIA: dict[str, tuple[str, str]] = {
     "photo": ("send_photo", "photo"),
     "video": ("send_video", "video"),
@@ -72,7 +72,7 @@ def describe(stored: dict[str, Any] | None) -> str:
     kind = names.get(stored["type"], stored["type"])
     text = (stored.get("text") or "").strip().replace("\n", " ")
     if len(text) > 40:
-        text = text[:40] + "…"
+        text = text[:40] + ".."
     return f"{kind}: {text}" if text else kind
 
 

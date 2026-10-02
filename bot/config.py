@@ -32,12 +32,12 @@ class Config:
     db_path: str = "data/bot.db"
     # Лимиты исходящих сообщений (ограничения Telegram).
     global_rate: float = 25.0          # сообщений в секунду на весь бот
-    private_burst: int = 3             # в личку: столько сообщений…
-    private_period: float = 2.0        # …за столько секунд
+    private_burst: int = 3             # в личку: столько сообщений
+    private_period: float = 2.0        # за столько секунд
     group_per_minute: int = 20         # в рабочую группу в минуту
     broadcast_rate: float = 15.0       # рассылка, сообщений в секунду
     request_timeout: int = 60          # таймаут запроса к Telegram, секунд
-    proxy: str | None = None           # socks5://… или http://… если Telegram недоступен напрямую
+    proxy: str | None = None           # socks5:// или http://, если Telegram недоступен напрямую
     ipv4_only: bool = True             # не ходить к Telegram по IPv6
 
     @classmethod

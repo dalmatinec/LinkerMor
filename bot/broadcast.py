@@ -42,15 +42,14 @@ class Progress:
 
     def text(self, finished: bool = False, stopped: bool = False) -> str:
         head = "⏹ Рассылка остановлена" if stopped else (
-            "✅ Рассылка завершена" if finished else "📨 Идёт рассылка…"
+            "✅ Рассылка завершена" if finished else "📨 Идёт рассылка"
         )
         return (
-            f"{head}\n\n"
-            f"Обработано: {self.done} из {self.total}\n"
-            f"✅ Доставлено: {self.sent}\n"
-            f"🚫 Остановили бота: {self.blocked}\n"
-            f"⚠️ Ошибки: {self.failed}\n"
-            f"⏱ {int(time.monotonic() - self.started)} сек."
+            f"<b>{head}</b> · {self.done}/{self.total}\n\n"
+            f"✅ Доставлено: <b>{self.sent}</b>\n"
+            f"💤 Остановили бота: <b>{self.blocked}</b>\n"
+            f"⚠️ Ошибки: <b>{self.failed}</b>\n"
+            f"⏱ {int(time.monotonic() - self.started)}с"
         )
 
 
@@ -111,6 +110,8 @@ class Broadcaster:
     @staticmethod
     async def _report(bot: Bot, chat_id: int, msg_id: int, text: str, kb) -> None:
         try:
-            await bot.edit_message_text(text, chat_id=chat_id, message_id=msg_id, reply_markup=kb)
+            await bot.edit_message_text(
+                text, chat_id=chat_id, message_id=msg_id, reply_markup=kb, parse_mode="HTML"
+            )
         except TelegramBadRequest:
             pass  # текст не изменился или сообщение удалено

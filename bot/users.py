@@ -18,7 +18,7 @@ def card(user: User, new: bool) -> str:
     head = texts.CARD_NEW if new else texts.CARD_REPEAT
     body = texts.CARD_BODY.format(
         name=mention(user),
-        username=f"@{escape(user.username)}" if user.username else "—",
+        username=f"@{escape(user.username)}" if user.username else "нет",
         id=user.id,
     )
     return f"{head}\n{body}"
@@ -40,7 +40,7 @@ def keyboard(user: User) -> InlineKeyboardMarkup:
     """Кнопки под каждым сообщением пользователя в рабочей группе."""
     name = user.full_name
     if len(name) > 20:
-        name = name[:20] + "…"
+        name = name[:20] + ".."
     ban = (
         InlineKeyboardButton(text="✅ Разбан", callback_data=f"unban:{user.id}")
         if user.banned
