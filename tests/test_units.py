@@ -138,3 +138,28 @@ async def test_retry_after_is_respected(monkeypatch):
     assert await mw(make_request, bot, SendMessage(chat_id=5, text="x")) == "ok"
     assert calls == 2 and slept and slept[-1] >= 3
     await bot.session.close()
+
+
+async def test_startup_waits_for_telegram(monkeypatch):
+    from aiogram.exceptions import TelegramNetworkError
+    from aiogram.methods import GetMe
+    from aiogram.types import User
+
+    from bot.__main__ import wait_for_telegram
+
+    calls = 0
+
+    class FakeBot:
+        async def get_me(self):
+            nonlocal calls
+            calls += 1
+            if calls < 3:
+                raise TelegramNetworkError(method=GetMe(), message="Request timeout error")
+            return User(id=1, is_bot=True, first_name="B")
+
+    async def no_sleep(_):
+        pass
+
+    monkeypatch.setattr("bot.__main__.asyncio.sleep", no_sleep)
+    me = await wait_for_telegram(FakeBot())
+    assert me.id == 1 and calls == 3

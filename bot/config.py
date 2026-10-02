@@ -36,6 +36,8 @@ class Config:
     private_period: float = 2.0        # …за столько секунд
     group_per_minute: int = 20         # в рабочую группу в минуту
     broadcast_rate: float = 15.0       # рассылка, сообщений в секунду
+    request_timeout: int = 60          # таймаут запроса к Telegram, секунд
+    proxy: str | None = None           # socks5://… или http://… если Telegram недоступен напрямую
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -56,4 +58,6 @@ class Config:
             private_period=float(env("PRIVATE_PERIOD", cls.private_period)),
             group_per_minute=int(env("GROUP_PER_MINUTE", cls.group_per_minute)),
             broadcast_rate=float(env("BROADCAST_RATE", cls.broadcast_rate)),
+            request_timeout=int(env("REQUEST_TIMEOUT", cls.request_timeout)),
+            proxy=env("PROXY") or None,
         )
