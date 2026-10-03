@@ -158,6 +158,11 @@ async def any_message(
         return
     if await _flood(bot, settings, flood, message, user):
         return
+    if settings["text_only"] and message.text is None:
+        # Проверка после антифлуда: иначе поток фото превратился бы
+        # в поток ответов бота.
+        await message.answer(texts.TEXT_ONLY)
+        return
     if settings.group_id is None:
         await message.answer(texts.NOT_CONFIGURED)
         return

@@ -134,11 +134,31 @@ async def test_flood_stops_forwarding_and_warns(h):
 
 
 async def test_album_counts_as_one_message(h):
+    await h.settings.set("text_only", False)
     await h.start_and_pass(USER)
     photo = [PhotoSize(file_id="f", file_unique_id="u", width=1, height=1)]
     for _ in range(5):
         await h.feed(h.message(USER, None, photo=photo, media_group_id="album1"))
     assert len(h.session.of(CopyMessage, GROUP)) == 5
+
+
+async def test_text_only_rejects_media(h):
+    await h.start_and_pass(USER)
+    photo = [PhotoSize(file_id="f", file_unique_id="u", width=1, height=1)]
+    await h.feed(h.message(USER, None, photo=photo, caption="фото"))
+    assert not h.session.of(CopyMessage, GROUP)
+    assert "только текст" in h.session.of(SendMessage, USER)[-1].text
+    await h.feed(h.message(USER, "а это текст"))
+    assert len(h.session.of(CopyMessage, GROUP)) == 1
+
+
+async def test_text_only_toggle(h):
+    await h.feed(h.callback(OWNER, "a:txt"))
+    assert h.settings["text_only"] is False
+    await h.start_and_pass(USER)
+    photo = [PhotoSize(file_id="f", file_unique_id="u", width=1, height=1)]
+    await h.feed(h.message(USER, None, photo=photo))
+    assert len(h.session.of(CopyMessage, GROUP)) == 1
 
 
 async def test_banned_user_is_ignored(h):

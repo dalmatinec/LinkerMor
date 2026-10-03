@@ -94,6 +94,7 @@ def main_view(settings: Settings, user_id: int) -> tuple[str, InlineKeyboardMark
         "⚙️ <b>Админка</b>\n\n"
         f"👥 Группа: {group_name(settings)}\n"
         f"{DOT[settings['captcha']]} Капча\n"
+        f"{DOT[settings['text_only']]} Только текст\n"
         f"{DOT[settings['start_ad_on']]} Реклама при старте\n"
         f"🛡 Флуд: {settings['flood_limit']} за {settings['flood_window']}с, "
         f"пауза {settings['flood_mute']}с"
@@ -102,7 +103,8 @@ def main_view(settings: Settings, user_id: int) -> tuple[str, InlineKeyboardMark
         btn("👋 Приветствие", "a:wel"), btn("📢 Реклама", "a:ad"),
         btn("📨 Рассылка", "a:bc"), btn("👥 Группа", "a:grp"),
         btn(f"{DOT[settings['captcha']]} Капча", "a:cap"), btn("🛡 Антифлуд", "a:fl"),
-        btn("🚫 Баны", "a:ban"), btn("📊 Статистика", "a:st"),
+        btn(f"{DOT[settings['text_only']]} Только текст", "a:txt"), btn("🚫 Баны", "a:ban"),
+        btn("📊 Статистика", "a:st"),
     ]
     if settings.is_owner(user_id):
         buttons.append(btn("👮 Админы", "a:adm"))
@@ -324,9 +326,10 @@ async def group_test(call: CallbackQuery, bot: Bot, settings: Settings) -> None:
 
 # ---- капча и антифлуд --------------------------------------------------------
 
-@router.callback_query(F.data == "a:cap")
-async def captcha_toggle(call: CallbackQuery, settings: Settings) -> None:
-    await settings.set("captcha", not settings["captcha"])
+@router.callback_query(F.data.in_({"a:cap", "a:txt"}))
+async def toggle(call: CallbackQuery, settings: Settings) -> None:
+    key = "captcha" if call.data == "a:cap" else "text_only"
+    await settings.set(key, not settings[key])
     await show(call, *main_view(settings, call.from_user.id))
 
 
