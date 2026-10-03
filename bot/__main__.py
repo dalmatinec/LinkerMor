@@ -20,6 +20,7 @@ from aiogram.types import (
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
     BotCommandScopeChat,
+    BotCommandScopeDefault,
 )
 
 from bot.broadcast import Broadcaster
@@ -59,29 +60,20 @@ async def wait_for_telegram(bot: Bot) -> User:
 
 
 async def set_commands(bot: Bot, settings: Settings) -> None:
+    """В меню только /start. Служебные команды работают, но нигде не видны.
+
+    Меню, выставленные прежними версиями бота для групп и для отдельных
+    админов, удаляются: иначе Telegram продолжал бы их показывать.
+    """
     await bot.set_my_commands(
-        [BotCommand(command="start", description="Начать")],
+        [BotCommand(command="start", description="Главное меню")],
         scope=BotCommandScopeAllPrivateChats(),
     )
-    await bot.set_my_commands(
-        [
-            BotCommand(command="id", description="ID пользователя (ответом)"),
-            BotCommand(command="ban", description="Забанить: ID или ответом"),
-            BotCommand(command="unban", description="Разбанить по ID"),
-            BotCommand(command="setgroup", description="Сделать группу рабочей"),
-        ],
-        scope=BotCommandScopeAllGroupChats(),
-    )
-    admin_commands = [
-        BotCommand(command="admin", description="Админка"),
-        BotCommand(command="ban", description="Забанить по ID"),
-        BotCommand(command="unban", description="Разбанить по ID"),
-        BotCommand(command="cancel", description="Отменить ввод"),
-        BotCommand(command="start", description="Начать как пользователь"),
-    ]
+    await bot.delete_my_commands(scope=BotCommandScopeDefault())
+    await bot.delete_my_commands(scope=BotCommandScopeAllGroupChats())
     for admin_id in settings.owner_ids | settings.admins:
         try:
-            await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=admin_id))
+            await bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=admin_id))
         except TelegramBadRequest:
             pass  # админ ещё не писал боту
 

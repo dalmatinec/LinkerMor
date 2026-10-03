@@ -178,7 +178,8 @@ async def test_id_command_shows_user_id(h):
 
 async def test_ban_button_requires_admin(h):
     await h.feed(h.callback(STAFF, f"ban:{USER}", chat_id=GROUP))
-    assert h.session.of(AnswerCallbackQuery)[-1].show_alert
+    answer = h.session.of(AnswerCallbackQuery)[-1]
+    assert not answer.show_alert and not answer.text, "не админу кнопка молчит"
     assert (await h.db.get_user(USER)) is None
 
     await h.feed(h.callback(OWNER, f"ban:{USER}", chat_id=GROUP))
@@ -216,11 +217,28 @@ async def test_start_ad_sent_after_welcome(h):
     assert texts[0].startswith("👋") and texts[1] == "🔥 Реклама"
 
 
-async def test_non_admin_has_no_panel(h):
-    await h.settings.set("captcha", False)
-    await h.feed(h.message(USER, "/admin"))
-    # /admin от обычного пользователя просто сообщение в поддержку
-    assert h.session.of(CopyMessage, GROUP)
+async def test_service_commands_silent_for_non_admin(h):
+    await h.start_and_pass(USER)
+    h.session.calls.clear()
+    for cmd in ("/admin", "/panel", "/cancel", "/ban 1", "/unban 1", "/id", "/setgroup"):
+        await h.feed(h.message(USER, cmd))
+    assert h.session.calls == [], "ни ответа, ни пересылки в группу"
+
+
+async def test_non_admin_ban_in_group_is_silent_and_not_forwarded(h):
+    await h.start_and_pass(USER)
+    await h.feed(h.message(USER, "вопрос"))
+    group_msg_id = (await _group_ids(h))[-1]
+    h.session.calls.clear()
+    await h.feed(h.message(STAFF, "/ban", chat_id=GROUP, reply_to=group_msg_id))
+    await h.feed(h.message(STAFF, "/setgroup", chat_id=GROUP))
+    assert h.session.calls == []
+    assert not (await h.db.get_user(USER)).banned
+
+
+async def test_admin_still_gets_panel(h):
+    await h.feed(h.message(OWNER, "/admin"))
+    assert "Админка" in h.session.of(SendMessage, OWNER)[-1].text
 
 
 async def test_flood_settings_buttons_respect_limits(h):

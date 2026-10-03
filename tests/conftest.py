@@ -29,7 +29,7 @@ from bot.broadcast import Broadcaster
 from bot.captcha import CaptchaStore
 from bot.db import Database
 from bot.flood import FloodControl
-from bot.handlers import admin, build_router, group, moderation, user
+from bot.handlers import admin, build_router, group, hidden, moderation, user
 from bot.settings import Settings
 
 OWNER = 1000
@@ -156,7 +156,7 @@ async def h(db):
     session = FakeSession()
     bot = Bot("42:TEST", session=session)
     # Роутеры модулей синглтоны, а диспетчер в каждом тесте новый.
-    for r in (admin.router, moderation.router, group.router, user.router):
+    for r in (admin.router, moderation.router, hidden.router, group.router, user.router):
         r._parent_router = None
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(build_router())

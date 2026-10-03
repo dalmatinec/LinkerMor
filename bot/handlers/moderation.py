@@ -61,11 +61,6 @@ async def unban(message: Message, command: CommandObject, db: Database, settings
     await message.reply(text.format(id=user_id), parse_mode="HTML")
 
 
-@router.message(Command("ban", "unban"), F.chat.type != "private")
-async def ban_denied(message: Message) -> None:
-    await message.reply(texts.NOT_ADMIN)
-
-
 @router.message(Command("id"), in_work_group)
 async def show_id(message: Message, db: Database) -> None:
     reply = message.reply_to_message
@@ -89,7 +84,7 @@ async def who(call: CallbackQuery, db: Database) -> None:
 @router.callback_query(F.data.regexp(r"^(ban|unban):-?\d+$"))
 async def ban_button(call: CallbackQuery, db: Database, settings: Settings) -> None:
     if not settings.is_admin(call.from_user.id):
-        await call.answer(texts.NOT_ADMIN, show_alert=True)
+        await call.answer()  # не админ: молча, как будто кнопка ничего не делает
         return
     action, raw = call.data.split(":", 1)
     user_id = int(raw)
